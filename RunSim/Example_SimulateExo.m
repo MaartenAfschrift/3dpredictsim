@@ -2,6 +2,7 @@
 
 % Influence of the kinematic constraint on stepwidth
 clear all; close all; clc;
+addpath(genpath('C:\Users\u0088756\Documents\FWO\Software\ExoSim\SimExo_3D\3dpredictsim'));
 
 %% Default settings
 

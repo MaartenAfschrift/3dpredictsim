@@ -1,30 +1,16 @@
 function [R] = f_LoadSim_PoggenSee2020_Rajagopal(ResultsFolder,loadname)
 
 
-%% Notes
-
-% to simplify batch processing, the casadi functions were already created
-% using the script CasadiFunctions_all_mtp_createDefault.m
-% This assumes invariant:
-%   Muscle and tendon properties
-%   Polynomials to compute moment arms
-%   Functions to compute passive stiffness
-
-% We can still vary:
-% 1) the collocation scheme
-% 2) the weights in the objective function
-% 3) the exoskeleton assistance
-% 4) the external function
-
+%% path information
 if strcmp(loadname(end-3:end),'.mat')
     loadname = loadname(1:end-4);
 end
 
-pathmain = mfilename('fullpath');
-[filepath,~,~] =  fileparts(pathmain);
-[pathRepo,~,~] = fileparts(filepath);
-OutFolder = fullfile(pathRepo,'Results',ResultsFolder);
-Outname = fullfile(OutFolder,[loadname '.mat']);
+pathmain        = mfilename('fullpath');
+[filepath,~,~]  =  fileparts(pathmain);
+[pathRepo,~,~]  = fileparts(filepath);
+OutFolder       = fullfile(pathRepo,'Results',ResultsFolder);
+Outname         = fullfile(OutFolder,[loadname '.mat']);
 load(Outname,'w_opt','stats','Sopt','ExoControl');
 S = Sopt;
 

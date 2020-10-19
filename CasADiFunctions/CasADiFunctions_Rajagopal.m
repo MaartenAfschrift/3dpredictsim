@@ -250,6 +250,25 @@ end
 Jtemp3 = Jtemp3/3;
 f_J3 = Function('f_J3',{etemp3},{Jtemp3});
 
+% Function for 30 elements
+etemp30 = SX.sym('etemp30',30);
+Jtemp30 = 0;
+for i=1:length(etemp30)
+    Jtemp30 = Jtemp30 + etemp30(i).^2;
+end
+Jtemp30 = Jtemp30/30;
+f_J30 = Function('f_J30',{etemp30},{Jtemp30});
+
+% Function for 6 elements
+etemp6 = SX.sym('etemp6',6);
+Jtemp6 = 0;
+for i=1:length(etemp6)
+    Jtemp6 = Jtemp6 + etemp6(i).^2;
+end
+Jtemp6 = Jtemp6/6;
+f_J6 = Function('f_J6',{etemp6},{Jtemp6});
+
+
 %% Sum of squared values (non-normalized)
 % Function for 3 elements
 etemp3 = SX.sym('etemp3',3);
@@ -685,6 +704,8 @@ f_forceEquilibrium_FtildeState_all_tendon.save(fullfile(OutPath,'f_forceEquilibr
 f_J2.save(fullfile(OutPath,'f_J2'));
 f_TrunkActivationDynamics.save(fullfile(OutPath,'f_TrunkActivationDynamics'));
 
+f_J6.save(fullfile(OutPath,'f_J6'));
+f_J30.save(fullfile(OutPath,'f_J30'));
 f_J3.save(fullfile(OutPath,'f_J3'));
 f_J23.save(fullfile(OutPath,'f_J23'));
 f_J25.save(fullfile(OutPath,'f_J25'));
