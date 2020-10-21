@@ -152,7 +152,13 @@ else
     MuscleMass =load(MassFile);
 end
 
-%% Experimental data
+
+
+%% Get bounds and initial guess
+
+% Kinematics file for bounds -- input arguments
+IKfile_bounds = fullfile(pathRepo, S.IKfile_Bounds);
+
 % We extract experimental data to set bounds and initial guesses if needed
 pathData = [pathRepo,'/OpenSimModel/',subject];
 joints = {'pelvis_tilt','pelvis_list','pelvis_rotation','pelvis_tx',...
@@ -163,76 +169,48 @@ joints = {'pelvis_tilt','pelvis_list','pelvis_rotation','pelvis_tx',...
     'lumbar_extension','lumbar_bending','lumbar_rotation','arm_flex_l',...
     'arm_add_l','arm_rot_l','arm_flex_r','arm_add_r','arm_rot_r',...
     'elbow_flex_l','elbow_flex_r'};
-pathVariousFunctions = [pathRepo,'/VariousFunctions'];
-addpath(genpath(pathVariousFunctions));
-% Extract joint positions from average walking motion
-motion_walk         = 'walking';
-nametrial_walk.id   = ['average_',motion_walk,'_HGC_mtp'];
-nametrial_walk.IK   = ['IK_',nametrial_walk.id];
-pathIK_walk         = [pathData,'/IK/',nametrial_walk.IK,'.mat'];
-Qs_walk             = getIK(pathIK_walk,joints);
-% Depending on the initial guess mode, we extract further experimental data
-if IGm == 2
-    % Extract joint positions from average running motion
-    motion_run          = 'running';
-    nametrial_run.id    = ['average_',motion_run,'_HGC'];
-    nametrial_run.IK    = ['IK_',nametrial_run.id];
-    pathIK_run          = [pathData,'/IK/',nametrial_run.IK,'.mat'];
-    Qs_run              = getIK(pathIK_run,joints);
-elseif IGm == 3 || 4
-    % Extract joint positions from existing motion (previous results)
-    if IGm == 3
-        GuessFolder = fullfile(pathRepo,'Results',S.ResultsF_ig);
-    elseif IGm ==4
-        GuessFolder = fullfile(pathRepo,'IG','data');
-    end
-    pathIK      = fullfile(GuessFolder,[savename_ig '.mot']);
-    Qs_ig       = getIK(pathIK,joints);
-    % When saving the results, we save a full gait cycle (2*N) so here we
-    % only select 1:N to have half a gait cycle
-    Qs_ig_sel.allfilt   = Qs_ig.allfilt(1:N,:);
-    Qs_ig_sel.time      = Qs_ig.time(1:N,:);
-    Qs_ig_sel.colheaders = Qs_ig.colheaders;
-end
-
-%% Bounds
-pathBounds = [pathRepo,'/Bounds'];
-addpath(genpath(pathBounds));
+Qs_walk          = getIK(IKfile_bounds,joints);
 [bounds,scaling] = getBounds_all_mtp(Qs_walk,NMuscle,nq,jointi,v_tgt);
 
 % adapt bounds based on user input
 bounds = AdaptBounds(bounds,S,mai);
 
-%% Initial guess
 % The initial guess depends on the settings
 pathIG = [pathRepo,'/IG'];
 addpath(genpath(pathIG));
 if IGsel == 1 % Quasi-random initial guess
     guess = getGuess_QR_opti_int(N,nq,NMuscle,scaling,v_tgt,jointi,d,S.IG_PelvisY);
 elseif IGsel == 2 % Data-informed initial guess
-    if IGm == 1 % Data from average walking motion
-        time_IC = [Qs_walk.time(1),Qs_walk.time(end)];
-        guess = getGuess_DI_opti_int_mtp(Qs_walk,nq,N,time_IC,NMuscle,jointi,...
-            scaling,v_tgt,d);
-    elseif IGm == 2 % Data from average runing motion
-        time_IC = [Qs_run.time(1),Qs_run.time(end)];
-        guess = getGuess_DI_opti_int(Qs_run,nq,N,time_IC,NMuscle,jointi,...
+    if IGm < 2 % Data from average walking motion
+        IKfile_guess    = fullfile(pathRepo, S.IKfile_guess);
+        Qs_guess        = getIK(IKfile_guess,joints);
+        time_IC         = [Qs_guess.time(1),Qs_guess.time(end)];
+        guess = getGuess_DI_opti_int_mtp(Qs_guess,nq,N,time_IC,NMuscle,jointi,...
             scaling,v_tgt,d);
     elseif IGm == 3 || IGm == 4 % Data from selected motion
+        % Extract joint positions from existing motion (previous results)
+        if S.IGm == 3
+            GuessFolder = fullfile(pathRepo,'Results',S.ResultsF_ig);
+        elseif S.IGm ==4
+            GuessFolder = fullfile(pathRepo,'IG','data');
+        end
+        pathIK      = fullfile(GuessFolder,[S.savename_ig '.mot']);
+        Qs_ig       = getIK(pathIK,joints);
+        % When saving the results, we save a full gait cycle (2*N) so here we
+        % only select 1:N to have half a gait cycle
+        nfr = length(Qs_ig.allfilt(:,1));
+        frSel = round(nfr./2);
+        Qs_ig_sel.allfilt   = Qs_ig.allfilt(1:frSel,:);
+        Qs_ig_sel.time      = Qs_ig.time(1:frSel,:);
+        Qs_ig_sel.colheaders = Qs_ig.colheaders;
         time_IC = [Qs_ig_sel.time(1),Qs_ig_sel.time(end)];
         guess = getGuess_DI_opti_int_mtp(Qs_ig_sel,nq,N,time_IC,NMuscle,jointi,scaling,v_tgt,d);
     end
 end
-% update initial guess when it below the lower bound
-if ~isempty(S.Bounds)
-    Inds = guess.a(1,:) < bounds.a.lower;
-    for i=Inds
-        guess.a(:,i) = bounds.a.lower(i);
-    end
-end
-if ~isempty(S.Bounds.tf)
-    guess.tf = nanmean(S.Bounds.tf);
-end
+
+% adapt guess so that it fits within the bounds
+guess = AdaptGuess_UserInput(guess,bounds,S);
+
 %% exoskeleton torques
 % function to get exoskeleton torques at mesh points
 ExoVect = GetExoTorques(S,pathRepo,N);

@@ -25,7 +25,7 @@ pathmain = mfilename('fullpath');
 [pathRepo,~,~] = fileparts(filepath);
 OutFolder = fullfile(pathRepo,'Results',ResultsFolder);
 Outname = fullfile(OutFolder,[loadname '.mat']);
-load(Outname,'w_opt','stats','Sopt','ExoControl');
+load(Outname,'w_opt','stats','Sopt','ExoVect','setup');
 S = Sopt;
 
 body_mass = S.mass;
@@ -38,15 +38,8 @@ writeIKmotion   = 1; % set to 1 to write .mot file
 % settings for optimization
 v_tgt       = S.v_tgt;      % average speed
 N           = S.N;          % number of mesh intervals
-W.E         = S.W.E;        % weight metabolic energy rate
-W.Ak        = S.W.Ak;       % weight joint accelerations
-W.ArmE      = S.W.ArmE;     % weight arm excitations
-W.passMom   = S.W.passMom;  % weight passive torques
-W.A         = S.W.A;        % weight muscle activations
+W           = S.W;
 exp_E       = S.W.exp_E;    % power metabolic energy
-W.Mtp       = S.W.Mtp;      % weight mtp excitations
-W.u         = S.W.u;        % weight on exctiations arm actuators
-coCont      = S.coCont;     % co-contraction identifier
 
 % ipopt options
 tol_ipopt       = S.tol_ipopt;
@@ -54,7 +47,6 @@ tol_ipopt       = S.tol_ipopt;
 %% Settings
 
 import casadi.*
-
 if ~isfield(S,'subject') || isempty(S.subject)
     S.subject = 'subject1';
 end
@@ -64,37 +56,8 @@ subject = S.subject;
 % Indices of the elements in the external functions
 % External function: F
 % First, joint torques.
-jointi.pelvis.tilt  = 1;
-jointi.pelvis.list  = 2;
-jointi.pelvis.rot   = 3;
-jointi.pelvis.tx    = 4;
-jointi.pelvis.ty    = 5;
-jointi.pelvis.tz    = 6;
-jointi.hip_flex.l   = 7;
-jointi.hip_add.l    = 8;
-jointi.hip_rot.l    = 9;
-jointi.hip_flex.r   = 10;
-jointi.hip_add.r    = 11;
-jointi.hip_rot.r    = 12;
-jointi.knee.l       = 13;
-jointi.knee.r       = 14;
-jointi.ankle.l      = 15;
-jointi.ankle.r      = 16;
-jointi.subt.l       = 17;
-jointi.subt.r       = 18;
-jointi.mtp.l        = 19;
-jointi.mtp.r        = 20;
-jointi.trunk.ext    = 21;
-jointi.trunk.ben    = 22;
-jointi.trunk.rot    = 23;
-jointi.sh_flex.l    = 24;
-jointi.sh_add.l     = 25;
-jointi.sh_rot.l     = 26;
-jointi.sh_flex.r    = 27;
-jointi.sh_add.r     = 28;
-jointi.sh_rot.r     = 29;
-jointi.elb.l        = 30;
-jointi.elb.r        = 31;
+jointi = getJointi();
+
 % Vectors of indices for later use
 residualsi          = jointi.pelvis.tilt:jointi.elb.r; % all
 ground_pelvisi      = jointi.pelvis.tilt:jointi.pelvis.tz; % ground-pelvis
@@ -132,6 +95,8 @@ F = external('F',ExtF);
 if isfield(S,'ExternalFunc2')   
    F1 = external('F',S.ExternalFunc2);
 elseif F.nnz_in ==  nq.all*3
+    warning(['No external was selected for post processing. Post processing',...
+         'is done with Browning_2008_pp.dll']);
    F1 = external('F', 'Browning_2008_pp.dll');
 elseif F.nnz_in ==  nq.all*3 + 2   
    F1 = external('F','SimExo_3D_ExportAll.dll');
@@ -143,17 +108,18 @@ cd(pathmain);
 %% Test the type of simulation
 ExoImplementation = 'IdealAnkle'; % (1) ankle actuation (2) passive afo, (3) torque actuator
 
-if strcmp(ExtF,'PredSim_3D_GRF.dll') && isfield(S,'AFO_stiffness')
+
+if F.nnz_in == nq.all*3+2
+    % After the first simulations report (May 12 2020), we changed the implemenation of the exoskeleton assistance
+    % to a torque actuator at the calcaneus and tibia. We also changed from two .dll files (one for optimization and one
+    % for post processing) to one .dll file for everything. 
+    ExoImplementation = 'TorqueTibiaCalcn';
+elseif strcmp(ExtF,'PredSim_3D_GRF.dll') && isfield(S,'AFO_stiffness')
     % AFO modelled as in Nuckols 2019: Ultrasound imaging links soleus
     % muscle neuromechanics and energetics during human walking with
     % elastic ankle exoskeletons
     disp('Post processing of passive AFO as in Nuckols - ultrasound paper');
     ExoImplementation = 'Nuckols2019';
-elseif F.nnz_in == nq.all*3+2
-    % After the first simulations report (May 12 2020), we changed the implemenation of the exoskeleton assistance
-    % to a torque actuator at the calcaneus and tibia. We also changed from two .dll files (one for optimization and one
-    % for post processing) to one .dll file for everything. 
-    ExoImplementation = 'TorqueTibiaCalcn';
 else
     disp('Default processing with active exoskeleton (Poggensee paper)')
 end
@@ -246,6 +212,37 @@ if strcmp(ExoImplementation,'TorqueTibiaCalcn') || F1.nnz_out == 73
 end
 
 
+%% CasADi functions
+% We create several CasADi functions for later use
+pathCasADiFunctions = [pathRepo,'/CasADiFunctions'];
+PathDefaultFunc = fullfile(pathCasADiFunctions,S.CasadiFunc_Folders);
+cd(PathDefaultFunc);
+% f_coll = Function.load('f_coll');
+f_FiberLength_TendonForce_tendon = Function.load('f_FiberLength_TendonForce_tendon');
+f_FiberVelocity_TendonForce_tendon = Function.load('f_FiberVelocity_TendonForce_tendon');
+f_forceEquilibrium_FtildeState_all_tendon = Function.load('f_forceEquilibrium_FtildeState_all_tendon');
+f_J2    = Function.load('f_J2');
+f_J23   = Function.load('f_J23');
+f_J25   = Function.load('f_J25');
+f_J8    = Function.load('f_J8');
+f_J92   = Function.load('f_J92');
+f_J92exp = Function.load('f_J92exp');
+f_Jnn3  = Function.load('f_Jnn3');
+f_lMT_vMT_dM = Function.load('f_lMT_vMT_dM');
+f_AllPassiveTorques = Function.load('f_AllPassiveTorques');
+fgetMetabolicEnergySmooth2004all = Function.load('fgetMetabolicEnergySmooth2004all');
+cd(pathmain);
+
+%% load the metalbolic energy equations
+PathDefaultFunc = fullfile(pathCasADiFunctions,'EnergyModels');
+cd(PathDefaultFunc);
+fgetMetabolicEnergySmooth2003all    = Function.load('fgetMetabolicEnergySmooth2003all');
+fgetMetabolicEnergySmooth2010all    = Function.load('fgetMetabolicEnergySmooth2010all');
+fgetMetabolicEnergySmooth2016all    = Function.load('fgetMetabolicEnergySmooth2016all');
+fgetMetabolicEnergySmooth2010all_hl = Function.load('fgetMetabolicEnergySmooth2010all_hl');
+fgetMetabolicEnergySmooth2010all_neg= Function.load('fgetMetabolicEnergySmooth2010all_neg');
+fgetMetabolicEnergy_MargariaSmooth  = Function.load('fgetMetabolicEnergy_MargariaSmooth');
+cd(pathmain);
 
 %% Model info
 body_weight = S.mass*9.81;
@@ -274,22 +271,34 @@ muscleNames = {'glut_med1_r','glut_med2_r','glut_med3_r',...
     'tib_ant_r','per_brev_r','per_long_r','per_tert_r','ext_dig_r',...
     'ext_hal_r','ercspn_r','intobl_r','extobl_r','ercspn_l',...
     'intobl_l','extobl_l'};
-% Muscle indices for later use
-pathmusclemodel = fullfile(pathRepo,'MuscleModel',subject);
+
+% indices of muscles
 musi = MuscleIndices(muscleNames(1:end-3));
 NMuscle = length(muscleNames(1:end-3))*2;
-ExtPoly = '_mtp';
-load([pathmusclemodel,'/MTparameters_',subject, ExtPoly, '.mat']);
+
+% Muscle indices for later use
+File_MTparameters = fullfile(PathDefaultFunc,'MTparameters.mat');
+if exist(File_MTparamters,'file')
+   load(File_MTparameters,'MTparameters');
+else
+    % This file was saved in another location in the old implementation
+    pathmusclemodel = fullfile(pathRepo,'MuscleModel',subject);
+    ExtPoly = '_mtp';
+    load([pathmusclemodel,'/MTparameters_',subject, ExtPoly, '.mat'],'MTparameters');
+end
 MTparameters_m = [MTparameters(:,musi),MTparameters(:,musi)];
 
-% Muscle-tendon parameters. Row 1: maximal isometric forces; Row 2: optimal
-% fiber lengths; Row 3: tendon slack lengths; Row 4: optimal pennation
-% angles; Row 5: maximal contraction velocities
-pathpolynomial = fullfile(pathRepo,'Polynomials',S.subject);
-addpath(genpath(pathpolynomial));
+% path to the polynomial functions
+if isfield(S,'PolyFolder') && ~isempty(S.PolyFolder)
+    % default location 
+    pathpolynomial = fullfile(pathRepo,'Polynomials',S.PolyFolder);
+else
+    % old version (we still want to be able to process these results)
+    pathpolynomial = fullfile(pathRepo,'Polynomials',S.subject);
+end
 tl = load([pathpolynomial,'/muscle_spanning_joint_INFO_',subject,'_mtp.mat']);
-[~,mai] = MomentArmIndices(muscleNames(1:end-3),...
-    tl.muscle_spanning_joint_INFO(1:end-3,:));
+% [~,mai] = MomentArmIndices(muscleNames(1:end-3),...
+%     tl.muscle_spanning_joint_INFO(1:end-3,:));
 
 % Parameters for activation dynamics
 tact = 0.015; % Activation time constant
@@ -306,27 +315,6 @@ tensions = [tension;tension];
 pctst = getSlowTwitchRatios(muscleNames(1:end-3));
 pctsts = [pctst;pctst];
 
-%% CasADi functions
-% We create several CasADi functions for later use
-pathCasADiFunctions = [pathRepo,'/CasADiFunctions'];
-PathDefaultFunc = fullfile(pathCasADiFunctions,S.CasadiFunc_Folders);
-cd(PathDefaultFunc);
-% f_coll = Function.load('f_coll');
-f_FiberLength_TendonForce_tendon = Function.load('f_FiberLength_TendonForce_tendon');
-f_FiberVelocity_TendonForce_tendon = Function.load('f_FiberVelocity_TendonForce_tendon');
-f_forceEquilibrium_FtildeState_all_tendon = Function.load('f_forceEquilibrium_FtildeState_all_tendon');
-f_J2    = Function.load('f_J2');
-f_J23   = Function.load('f_J23');
-f_J25   = Function.load('f_J25');
-f_J8    = Function.load('f_J8');
-f_J92   = Function.load('f_J92');
-f_J92exp = Function.load('f_J92exp');
-f_Jnn3  = Function.load('f_Jnn3');
-f_lMT_vMT_dM = Function.load('f_lMT_vMT_dM');
-f_AllPassiveTorques = Function.load('f_AllPassiveTorques');
-fgetMetabolicEnergySmooth2004all = Function.load('fgetMetabolicEnergySmooth2004all');
-cd(pathmain);
-
 
 %% file with mass of muscles
 MassFile = fullfile(PathDefaultFunc,'MassM.mat');
@@ -336,23 +324,8 @@ else
     MassFile = fullfile(pathCasADiFunctions,'MassM.mat');
     MuscleMass =load(MassFile);
 end
-% disp(MuscleMass.MassM(1));
 
-%% load the metalbolic energy equations
-PathDefaultFunc = fullfile(pathCasADiFunctions,'EnergyModels');
-cd(PathDefaultFunc);
-fgetMetabolicEnergySmooth2003all    = Function.load('fgetMetabolicEnergySmooth2003all');
-fgetMetabolicEnergySmooth2010all    = Function.load('fgetMetabolicEnergySmooth2010all');
-fgetMetabolicEnergySmooth2016all    = Function.load('fgetMetabolicEnergySmooth2016all');
-fgetMetabolicEnergySmooth2010all_hl = Function.load('fgetMetabolicEnergySmooth2010all_hl');
-fgetMetabolicEnergySmooth2010all_neg= Function.load('fgetMetabolicEnergySmooth2010all_neg');
-fgetMetabolicEnergy_MargariaSmooth  = Function.load('fgetMetabolicEnergy_MargariaSmooth');
-cd(pathmain);
-
-
-%% Experimental data
-% We extract experimental data to set bounds and initial guesses if needed
-pathData = [pathRepo,'/OpenSimModel/',subject];
+%% Joints
 joints = {'pelvis_tilt','pelvis_list','pelvis_rotation','pelvis_tx',...
     'pelvis_ty','pelvis_tz','hip_flexion_l','hip_adduction_l',...
     'hip_rotation_l','hip_flexion_r','hip_adduction_r','hip_rotation_r',...
@@ -361,94 +334,9 @@ joints = {'pelvis_tilt','pelvis_list','pelvis_rotation','pelvis_tx',...
     'lumbar_extension','lumbar_bending','lumbar_rotation','arm_flex_l',...
     'arm_add_l','arm_rot_l','arm_flex_r','arm_add_r','arm_rot_r',...
     'elbow_flex_l','elbow_flex_r'};
-pathVariousFunctions = [pathRepo,'/VariousFunctions'];
-addpath(genpath(pathVariousFunctions));
-% Extract joint positions from average walking motion
-motion_walk         = 'walking';
-nametrial_walk.id   = ['average_',motion_walk,'_HGC_mtp'];
-nametrial_walk.IK   = ['IK_',nametrial_walk.id];
-pathIK_walk         = [pathData,'/IK/',nametrial_walk.IK,'.mat'];
-Qs_walk             = getIK(pathIK_walk,joints);
 
-%% Bounds
-pathBounds = [pathRepo,'/Bounds'];
-addpath(genpath(pathBounds));
-[bounds,scaling] = getBounds_all_mtp(Qs_walk,NMuscle,nq,jointi,v_tgt);
-% Simulate co-contraction by increasing the lower bound on muscle activations
-if coCont == 1
-    bounds.a.lower = 0.1*ones(1,NMuscle);
-elseif coCont == 2
-    bounds.a.lower = 0.15*ones(1,NMuscle);
-elseif coCont == 3
-    bounds.a.lower = 0.2*ones(1,NMuscle);
-end
-
-%% exoskeleton torques
-if ~isempty(ExoControl)
-    ExoVect = [ExoControl.Tankle_l; ExoControl.Tankle_r];
-else
-     % zero exoskeleton assitance
-    ExoVect = zeros(2,N);
-end
-% ExoControl = [];
-% body_mass = S.mass;
-% if S.ExoBool
-%     if strcmp(S.DataSet,'Zhang2017')
-%         % load the data from Zhang 2017
-%         Zhang = load([pathRepo,'\Data\Zhang_2017\opt_tau.mat']);
-%         Tankle = nanmean(Zhang.opt_tau)*-1.*body_mass; % -1 because plantarflexion is negative in opensim model
-%         ExoSpline.Tankle = spline(linspace(0,2,length(Tankle)*2),[Tankle Tankle]);
-%     elseif strcmp(S.DataSet,'PoggenSee2020_AFO')
-%         Poggensee = load([pathRepo,'\Data\Poggensee_2020\torque_profile.mat']);
-%         Tankle = Poggensee.torque*-1*body_mass; % -1 because plantarflexion is negative in opensim model
-%         ExoSpline.Tankle = spline(linspace(0,2,length(Tankle)*2),[Tankle' Tankle']);
-%     elseif strcmp(S.DataSet,'PoggenSee2020_Exp')
-%         Poggensee = load([pathRepo,'\Data\Poggensee_2020_Exp\torque_profile.mat']);
-%         Tankle = Poggensee.torque*-1; % -1 because plantarflexion is negative in opensim model
-%         ExoSpline.Tankle = spline(linspace(0,2,length(Tankle)*2),[Tankle' Tankle']);
-%      elseif strcmp(S.DataSet,'PoggenSee2020_ExpPass')
-%         Poggensee = load([pathRepo,'\Data\Poggensee_2020_ExpPass\torque_profile.mat']);
-%         Tankle = Poggensee.torque*-1; % -1 because plantarflexion is negative in opensim model
-%         ExoSpline.Tankle = spline(linspace(0,2,length(Tankle)*2),[Tankle' Tankle']);
-%     else
-%         error(['Could not find the dataset ' S.DataSet ' to prescribe the exoskeleton torques']);
-%     end
-%     
-%     % adapt timing of exoskeleton torque to "align with natural" timing of gait
-%     % phases in the simulation
-%     if Set.PercStance.bool
-%         % adapt ExoVect to express exoskeleton assistance as a percentage of
-%         % the stance phase instead of stride
-%         nfr = length(Tankle);
-%         Tankle_stance = Tankle(1:nfr*S.PercStance.xStanceOr);
-%         Tankle_swing = Tankle(nfr*S.PercStance.xStanceOr:nfr);
-%         SplineStance = spline(linspace(0,1,length(Tankle_stance)),Tankle_stance');
-%         SplineSwing = spline(linspace(0,1,length(Tankle_swing)),Tankle_swing');
-%         xStance = linspace(0,1,nfr*S.PercStance.xStanceNew);
-%         xSwing = linspace(0,1,nfr*(1-S.PercStance.xStanceNew));
-%         TStance = ppval(SplineStance,xStance);
-%         TSwing = ppval(SplineSwing,xSwing);
-%         Tankle = [TStance TSwing(2:end)];
-%         ExoSpline.Tankle = spline(linspace(0,2,length(Tankle)*2),[Tankle' Tankle']);
-%     end
-%     
-%     % express exoskeleton on discretisation simulation
-%     ExoControl.Tankle_r = ppval(ExoSpline.Tankle,linspace(0,0.5,N));
-%     ExoControl.Tankle_l = ppval(ExoSpline.Tankle,linspace(0.5,1,N));
-%     
-%     % scale exoskeleton support
-%     if isfield(S,'ExoScale')
-%         ExoControl.Tankle_r = ExoControl.Tankle_r*S.ExoScale;
-%         ExoControl.Tankle_l = ExoControl.Tankle_l*S.ExoScale;
-%     end
-%     ExoVect = [ExoControl.Tankle_l; ExoControl.Tankle_r];
-% else
-%     % zero exoskeleton assitance
-%     ExoVect = zeros(2,N);
-% end
-
-
-
+%% get scaling
+scaling = setup.scaling;
 
 %% Index helpers
 
@@ -495,7 +383,7 @@ QsSymB_ptx = [jointi.pelvis.tilt,jointi.pelvis.tx,...
     jointi.elb.r,jointi.elb.l];
 
 
-%% Analyze results
+%% Read from the vector with optimization results
 
 NParameters = 1;
 tf_opt = w_opt(1:NParameters);

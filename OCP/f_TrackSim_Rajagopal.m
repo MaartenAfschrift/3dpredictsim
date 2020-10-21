@@ -159,10 +159,7 @@ joints = {'pelvis_tilt','pelvis_list','pelvis_rotation','pelvis_tx',...
 [Tracking] = GetTrackingData(S,pathRepo,joints,N);
 
 %% Bounds
-pathBounds = [pathRepo,'/Bounds'];
-addpath(genpath(pathBounds));
-%[bounds,scaling] = getBounds_all_mtp_tracking(Qs_walk,NMuscle,nq,jointi,S.v_tgt,Tracking.GRF.p);
-% [bounds,scaling] = getBounds_tracking_mtp(Qs_walk,NMuscle,nq,jointi,0,Tracking.GRF.p,0,0);
+% get bounds based on tracking motion
 [bounds,scaling] = getBounds_tracking_mtp_NoContact(Tracking.Qs.p,NMuscle,nq,jointi,Tracking.GRF.p);
 % adapt bounds based on user input
 bounds = AdaptBounds(bounds,S,mai);
@@ -521,130 +518,73 @@ for j=1:d
     % Contraction dynamics (implicit formulation)
     eq_constr{end+1} = Hilldiffj;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Constraints to prevent parts of the skeleton to penetrate each
-    % other.
-    % Origins calcaneus (transv plane) at minimum 9 cm from each other.
-    % ineq_constr3{end+1} = f_Jnn2(Tj(calcOr.r,1) - Tj(calcOr.l,1));
-    % Constraint to prevent the arms to penetrate the skeleton
-    % Origins femurs and ipsilateral hands (transv plane) at minimum
-    % 18 cm from each other.
-    % ineq_constr4{end+1} = f_Jnn2(Tj(femurOr.r,1) - Tj(handOr.r,1));
-    % ineq_constr4{end+1} = f_Jnn2(Tj(femurOr.l,1) - Tj(handOr.l,1));
-    % Origins tibia (transv plane) at minimum 11 cm from each other.
-    % ineq_constr5{end+1} = f_Jnn2(Tj(tibiaOr.r,1) - Tj(tibiaOr.l,1));
-    % Origins toes (transv plane) at minimum 10 cm from each other.
-    % ineq_constr6{end+1} = f_Jnn2(Tj(toesOr.r,1) - Tj(toesOr.l,1));
-    
-%     % objective funciton
-%     %--------------------------------------------------------------------
-%     % Tracking errors
-%     Qerror = Qskj_nsc(Track_IKi,j)- Tracking_Q;
-%     IDerr = Qskj_nsc(Track_IDi,j)- Tracking_ID;
-%     Ferr = Tj(GRFi.all,1) - Tracking_F;
-%     Merr = Tj(GRFi.Mall,1) - Tracking_T;
-%     % objective function
-%     J = J + W.Qs*B(j+1)*(f_J30(Qerror))*h +... % tracking kinematics
-%         W.GRF*B(j+1)*(f_J6(Ferr./scaling.GRF'))*h +... % tracking GRF forces
-%         W.GRM*B(j+1)*(f_J6(Merr./scaling.GRM'))*h +... % tracking GRF moments
-%         W.ID_act*B(j+1)*(f_J23(IDerr./scaling.T))*h +...  % tracking ID moments
-%         W.a*B(j+1)*(f_J80(akj(:,j+1)'))*h + ...               % implicit activations
-%         W.a*B(j+1)*(f_J2(e_mtpk))*h +...                      % reserve actuators mtp.
-%         W.a*B(j+1)*(f_J8(e_ak))*h +...                        % reserve actuators arms
-%         W.u*B(j+1)*(f_J23(Aj(residuals_noarmsi,j)))*h + ...   % joint accelerations
-%         W.u*B(j+1)*(f_J80(vAk))*h + ...                       % act dyn
-%         W.u*B(j+1)*(f_J80(dFTtildej(:,j)))*h;                 % derivative tendon force
-    
-    % objective funciton
-    %--------------------------------------------------------------------
-    % Tracking errors
-    Qerror = Qskj_nsc(Track_IKi,j)- Tracking_Q;
-    IDerr = Tj(Track_IDi,1)- Tracking_ID;
-    Ferr = Tj(GRFi.all,1) - Tracking_F;
-    % objective function
+    %objective function   
+    Qerror = Qskj_nsc(Track_IKi,j)- Tracking_Q;     % joint angles
+    IDerr = Tj(Track_IDi,1)- Tracking_ID;           % joint moments
+    Ferr = Tj(GRFi.all,1) - Tracking_F;             % Ground reaction forces
+    Merr = Tj(GRFi.Mall,1) - Tracking_T;            % Ground reaction moments
     J = J + W.Qs*B(j+1)*(f_J30(Qerror))*h +... % tracking kinematics
         W.GRF*B(j+1)*(f_J6(Ferr./scaling.GRF'))*h +... % tracking GRF forces
+        W.GRM*B(j+1)*(f_J6(Merr./scaling.GRM'))*h +... % tracking GRF moments
         W.ID_act*B(j+1)*(f_J23(IDerr./scaling.T))*h +...  % tracking ID moments
         W.a*B(j+1)*(f_J80(akj(:,j+1)'))*h + ...               % implicit activations
         W.a*B(j+1)*(f_J2(e_mtpk))*h +...                      % reserve actuators mtp.
         W.a*B(j+1)*(f_J8(e_ak))*h +...                        % reserve actuators arms
-        W.a*B(j+1)*(f_J3(e_lumbark))*h +...                   % reserve actuators lumbar
         W.u*B(j+1)*(f_J23(Aj(residuals_noarmsi,j)))*h + ...   % joint accelerations
         W.u*B(j+1)*(f_J80(vAk))*h + ...                       % act dyn
         W.u*B(j+1)*(f_J80(dFTtildej(:,j)))*h;                 % derivative tendon force
-    
-    
-    
-end % End loop over collocation points
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ end % End loop over collocation points
 eq_constr = vertcat(eq_constr{:});
 ineq_constr1 = vertcat(ineq_constr1{:});
 ineq_constr2 = vertcat(ineq_constr2{:});
-% ineq_constr3 = vertcat(ineq_constr3{:});
-% ineq_constr4 = vertcat(ineq_constr4{:});
-% ineq_constr5 = vertcat(ineq_constr5{:});
-% ineq_constr6 = vertcat(ineq_constr6{:});
 
 
 % Casadi function to get constraints and objective
 if F.nnz_in == nq.all*3+2
-%     f_coll = Function('f_coll',{ak,aj,FTtildek,FTtildej,Qsk,Qsj,Qdotsk,...
-%         Qdotsj,a_ak,a_aj,a_mtpk,a_mtpj,vAk,e_ak,e_mtpk,dFTtildej,Aj,...
-%         a_lumbark,a_lumbarj,e_lumbark,Tracking_Q,Tracking_F,Tracking_T,...
-%         Tracking_ID,Texok},...
-%         {eq_constr,ineq_constr1,ineq_constr2,ineq_constr3,ineq_constr4,...
-%         ineq_constr5,ineq_constr6,J});
-else
-%     f_coll = Function('f_coll',{ak,aj,FTtildek,FTtildej,Qsk,Qsj,Qdotsk,...
-%         Qdotsj,a_ak,a_aj,a_mtpk,a_mtpj,vAk,e_ak,e_mtpk,dFTtildej,Aj,...
-%         a_lumbark,a_lumbarj,e_lumbark,Tracking_Q,Tracking_F,Tracking_T,...
-%         Tracking_ID},...
-%         {eq_constr,ineq_constr1,ineq_constr2,ineq_constr3,ineq_constr4,...
-%         ineq_constr5,ineq_constr6,J});
     f_coll = Function('f_coll',{ak,aj,FTtildek,FTtildej,Qsk,Qsj,Qdotsk,...
         Qdotsj,a_ak,a_aj,a_mtpk,a_mtpj,vAk,e_ak,e_mtpk,dFTtildej,Aj,...
-        a_lumbark,a_lumbarj,e_lumbark,Tracking_Q,Tracking_F,Tracking_ID},...
-        {eq_constr,ineq_constr1,ineq_constr2,J});
+        a_lumbark,a_lumbarj,e_lumbark,Tracking_Q,Tracking_F,Tracking_T,...
+        Tracking_ID,Texok},...
+        {eq_constr,ineq_constr1,ineq_constr2,ineq_constr3,ineq_constr4,...
+        ineq_constr5,ineq_constr6,J});
+else
+    f_coll = Function('f_coll',{ak,aj,FTtildek,FTtildej,Qsk,Qsj,Qdotsk,...
+        Qdotsj,a_ak,a_aj,a_mtpk,a_mtpj,vAk,e_ak,e_mtpk,dFTtildej,Aj,...
+        a_lumbark,a_lumbarj,e_lumbark,Tracking_Q,Tracking_F,Tracking_T,...
+        Tracking_ID},...
+        {eq_constr,ineq_constr1,ineq_constr2,ineq_constr3,ineq_constr4,...
+        ineq_constr5,ineq_constr6,J});
 end
 
 % input data for tracking
 DatQ = Tracking.Qs.p.allinterpfilt(:,Track_IKi+1)'; % +1 because of time vector on first col
 DatID = Tracking.ID.p.allinterp(:,Track_IDi+1)'; % +1 because of time vector on first col
 DatGRF = Tracking.GRF.p.val.allinterp(:,2:end)';
-% DatM = Tracking.GRF.p.MorGF.allinterp(:,2:end)';
+DatM = Tracking.GRF.p.MorGF.allinterp(:,2:end)';
 
 % assign NLP problem to multiple cores
 f_coll_map = f_coll.map(N,S.parallelMode,S.NThreads);
 if F.nnz_in == nq.all*3+2
-%     [coll_eq_constr, coll_ineq_constr1, coll_ineq_constr2, coll_ineq_constr3,...
-%         coll_ineq_constr4, coll_ineq_constr5, coll_ineq_constr6, Jall] = f_coll_map(...
-%         a(:,1:end-1), a_col, FTtilde(:,1:end-1), FTtilde_col, Qs(:,1:end-1), ...
-%         Qs_col, Qdots(:,1:end-1), Qdots_col, a_a(:,1:end-1), a_a_col, ...
-%         a_mtp(:,1:end-1), a_mtp_col, vA, e_a, e_mtp, dFTtilde_col, A_col,...
-%         a_lumbar(:,1:end-1), a_lumbar_col,e_lumbar,...
-%         DatQ,DatGRF,DatM,DatID, ExoVect);
-else
-%     [coll_eq_constr, coll_ineq_constr1, coll_ineq_constr2, coll_ineq_constr3,...
-%         coll_ineq_constr4, coll_ineq_constr5, coll_ineq_constr6, Jall] = f_coll_map(...
-%         a(:,1:end-1), a_col, FTtilde(:,1:end-1), FTtilde_col, Qs(:,1:end-1), ...
-%         Qs_col, Qdots(:,1:end-1), Qdots_col, a_a(:,1:end-1), a_a_col, ...
-%         a_mtp(:,1:end-1), a_mtp_col, vA, e_a, e_mtp, dFTtilde_col, A_col,...
-%         a_lumbar(:,1:end-1), a_lumbar_col,e_lumbar,...
-%         DatQ,DatGRF,DatM,DatID);
-     [coll_eq_constr, coll_ineq_constr1, coll_ineq_constr2, Jall] = f_coll_map(...
+    [coll_eq_constr, coll_ineq_constr1, coll_ineq_constr2, Jall] = f_coll_map(...
         a(:,1:end-1), a_col, FTtilde(:,1:end-1), FTtilde_col, Qs(:,1:end-1), ...
         Qs_col, Qdots(:,1:end-1), Qdots_col, a_a(:,1:end-1), a_a_col, ...
         a_mtp(:,1:end-1), a_mtp_col, vA, e_a, e_mtp, dFTtilde_col, A_col,...
         a_lumbar(:,1:end-1), a_lumbar_col,e_lumbar,...
-        DatQ,DatGRF,DatID);
+        DatQ,DatGRF,DatM,DatID, ExoVect);
+else
+    [coll_eq_constr, coll_ineq_constr1, coll_ineq_constr2, Jall] = f_coll_map(...
+        a(:,1:end-1), a_col, FTtilde(:,1:end-1), FTtilde_col, Qs(:,1:end-1), ...
+        Qs_col, Qdots(:,1:end-1), Qdots_col, a_a(:,1:end-1), a_a_col, ...
+        a_mtp(:,1:end-1), a_mtp_col, vA, e_a, e_mtp, dFTtilde_col, A_col,...
+        a_lumbar(:,1:end-1), a_lumbar_col,e_lumbar,...
+        DatQ,DatGRF,DatM,DatID);
 end
 
 % constrains
 opti.subject_to(coll_eq_constr == 0);
 opti.subject_to(coll_ineq_constr1(:) >= 0);
 opti.subject_to(coll_ineq_constr2(:) <= 1/tact);
-% opti.subject_to(S.Constr.calcn.^2 < coll_ineq_constr3(:) < 4); % origin calcaneus
-% opti.subject_to(0.0324 < coll_ineq_constr4(:) < 4); % arms
-% opti.subject_to(S.Constr.tibia.^2 < coll_ineq_constr5(:) < 4); % origin tibia minimum x cm away from each other
-% opti.subject_to(S.Constr.toes.^2   < coll_ineq_constr6(:) < 4); % origins toes minimum x cm away from each other
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Loop over mesh points
 for k=1:N

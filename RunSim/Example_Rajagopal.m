@@ -43,8 +43,7 @@ S.Symmetric = true;
 S.Periodic = false;
 
 % select model
-S.Model.Rajagopal = true;
-S.Model.Default = false;
+S.Model ={'Rajagopal'};
 
 % weight on lumbar joint activations in objective func
 S.W.Lumbar = 10^5;
@@ -55,14 +54,3 @@ S.Bounds.ActLower = 0.01;
 % run optimization
 f_PredSim_Rajagopal(S);     % run the optimization
 f_LoadSim_Rajagopal(S.ResultsFolder,S.savename);
-
-
-%% test multiple simulations with different weight on lumbar actuation
-wLumbar = [1 10 10^2 10^3 10^4 10^5 10^6];
-for i=1:length(wLumbar)    
-    S.ResultsFolder = 'Example_Rajagopal2015_Poly';
-    S.savename      = ['NoExo_w' num2str(wLumbar(i))];
-    S.W.Lumbar      = wLumbar(i);
-    f_PredSim_PoggenSee2020_Rajagopal(S);     % run the optimization
-%     f_LoadSim_PoggenSee2020_Rajagopal(S.ResultsFolder,S.savename);    
-end

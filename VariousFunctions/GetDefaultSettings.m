@@ -197,18 +197,19 @@ if ~isfield(S,'Periodic')
 end
 
 % model selection
-if isfield(S,'Model')
-    if ~isfield(S.Model,'Rajagopal')
-        S.Model.Rajagopal = false;
-    end
-    if ~isfield(S.Model,'Default')
-        S.Model.Default = true;
-    end
-else
-    S.Model.Rajagopal = false;
-    S.Model.Default = true;
+if ~isfield(S.Model)
+    S.Model = 'gait92';
 end
 
+% default IK file to determine bounds
+if ~exist(S,'IKfile_Bounds')
+    S.IKfile_Bounds = 'OpenSimModel\IK_Bounds_Default.mat';
+end
+
+% default IK file for initial guess (when used data-informed guess)
+if ~exist(S,'S.IKfile_guess')
+    S.IKfile_Bounds = 'OpenSimModel\IK_Guess_Default.mat';
+end
 
 % Print the settings to the screen
 disp(S);
