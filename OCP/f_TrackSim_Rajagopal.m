@@ -1,10 +1,8 @@
 function [] = f_TrackSim_Rajagopal(S)
 
 %% Adding the casadi path seems to be needed to run processes in batch
-name = getenv('COMPUTERNAME');
-if strcmp(name,'GBW-D-W2711')
-    addpath(genpath('C:\GBW_MyPrograms\casadi-windows-matlabR2016a-v3.5.1'));
-end
+AddCasadiPaths();
+
 %% Default settings
 
 S = GetDefaultSettings(S);
@@ -15,7 +13,6 @@ S = GetDefaultSettings(S);
 % settings for optimization
 N           = S.N;          % number of mesh intervals
 W           = S.W;          % weights optimization
-parallelMode = 'thread';
 
 %% Load external functions
 import casadi.*
@@ -32,12 +29,6 @@ pathExternalFunctions = [pathRepo,'/ExternalFunctions'];
 cd(pathExternalFunctions)
 F  = external('F',S.ExternalFunc);
 cd(pathmain);
-%% Output folder
-% save the results in the right folder:
-OutFolder = fullfile(pathRepo,'Results',S.ResultsFolder);
-if ~isfolder(OutFolder)
-    mkdir(OutFolder);
-end
 
 %% Indices external function
 % Indices of the elements in the external functions
@@ -88,18 +79,6 @@ GRFi.Mr             = 58:60;
 GRFi.Ml             = 61:63;
 GRFi.Mall           = [GRFi.Mr,GRFi.Ml];
 
-
-%% check if we are using a proper .dll function in this implementation
-nInput = F.nnz_in;
-if nInput == nq.all*3 && S.ExoBool == 1
-    disp(['Warning: you have to use a .dll function with the exoskeleton moments',...
-        'as input arguments to simulate the exoskeleton']);
-    disp(['In this new version, we implemented the exoskeleton torque ',...
-        'as a torque acting at the tibia and calcaneus and not as an ideal ',...
-        'acutation at the ankle joint']);
-    disp('Please look at the implementation in : SimExo_3D_talus_out.cpp');
-end
-
 %% Collocation scheme
 % We use a pseudospectral direct collocation method, i.e. we use Lagrange
 % polynomials to approximate the state derivatives at the collocation
@@ -148,10 +127,10 @@ PathDefaultFunc = fullfile(pathCasADiFunctions,S.CasadiFunc_Folders);
 f_ArmActivationDynamics = Function.load(fullfile(PathDefaultFunc,'f_ArmActivationDynamics'));
 f_forceEquilibrium_FtildeState_all_tendon = Function.load(fullfile(PathDefaultFunc,'f_forceEquilibrium_FtildeState_all_tendon'));
 f_J2    = Function.load(fullfile(PathDefaultFunc,'f_J2'));
+f_J3    = Function.load(fullfile(PathDefaultFunc,'f_J3'));
 f_J23   = Function.load(fullfile(PathDefaultFunc,'f_J23'));
 f_J8    = Function.load(fullfile(PathDefaultFunc,'f_J8'));
 f_J80   = Function.load(fullfile(PathDefaultFunc,'f_J80'));
-f_Jnn2  = Function.load(fullfile(PathDefaultFunc,'f_Jnn2'));
 f_lMT_vMT_dM = Function.load(fullfile(PathDefaultFunc,'f_lMT_vMT_dM'));
 f_MtpActivationDynamics = Function.load(fullfile(PathDefaultFunc,'f_MtpActivationDynamics'));
 f_AllPassiveTorques = Function.load(fullfile(PathDefaultFunc,'f_AllPassiveTorques'));
@@ -162,22 +141,12 @@ f_THipRot = Function.load(fullfile(PathDefaultFunc,'f_THipRot'));
 f_TKnee = Function.load(fullfile(PathDefaultFunc,'f_TKnee'));
 f_TAnkle = Function.load(fullfile(PathDefaultFunc,'f_TAnkle'));
 f_TSubt = Function.load(fullfile(PathDefaultFunc,'f_TSubt'));
-
 f_J30 = Function.load(fullfile(PathDefaultFunc,'f_J30'));
 f_J6 = Function.load(fullfile(PathDefaultFunc,'f_J6'));
 
-% file with mass of muscles
-MassFile = fullfile(PathDefaultFunc,'MassM.mat');
-if exist(MassFile,'file')
-    MuscleMass = load(MassFile);
-else
-    MassFile = fullfile(pathCasADiFunctions,'MassM.mat');
-    MuscleMass =load(MassFile);
-end
 
-%% Experimental data
+%% Experimental data (to track)
 % We extract experimental data to set bounds and initial guesses if needed
-pathData = [pathRepo,'/OpenSimModel/',S.subject];
 joints = {'pelvis_tilt','pelvis_list','pelvis_rotation','pelvis_tx',...
     'pelvis_ty','pelvis_tz','hip_flexion_l','hip_adduction_l',...
     'hip_rotation_l','hip_flexion_r','hip_adduction_r','hip_rotation_r',...
@@ -186,39 +155,7 @@ joints = {'pelvis_tilt','pelvis_list','pelvis_rotation','pelvis_tx',...
     'lumbar_extension','lumbar_bending','lumbar_rotation','arm_flex_l',...
     'arm_add_l','arm_rot_l','arm_flex_r','arm_add_r','arm_rot_r',...
     'elbow_flex_l','elbow_flex_r'};
-pathVariousFunctions = [pathRepo,'/VariousFunctions'];
-addpath(genpath(pathVariousFunctions));
-% Extract joint positions from average walking motion
-motion_walk         = 'walking';
-nametrial_walk.id   = ['average_',motion_walk,'_HGC_mtp'];
-nametrial_walk.IK   = ['IK_',nametrial_walk.id];
-pathIK_walk         = [pathData,'/IK/',nametrial_walk.IK,'.mat'];
-Qs_walk             = getIK(pathIK_walk,joints);
-% Depending on the initial guess mode, we extract further experimental data
-if S.IGmodeID == 2
-    % Extract joint positions from average running motion
-    motion_run          = 'running';
-    nametrial_run.id    = ['average_',motion_run,'_HGC'];
-    nametrial_run.IK    = ['IK_',nametrial_run.id];
-    pathIK_run          = [pathData,'/IK/',nametrial_run.IK,'.mat'];
-    Qs_run              = getIK(pathIK_run,joints);
-elseif S.IGmodeID == 3 || 4
-    % Extract joint positions from existing motion (previous results)
-    if S.IGmodeID == 3
-        GuessFolder = fullfile(pathRepo,'Results',S.ResultsF_ig);
-    elseif S.IGmodeID ==4
-        GuessFolder = fullfile(pathRepo,'IG','data');
-    end
-    pathIK      = fullfile(GuessFolder,[S.savename_ig '.mot']);
-    Qs_ig       = getIK(pathIK,joints);
-    % When saving the results, we save a full gait cycle (2*N) so here we
-    % only select 1:N to have half a gait cycle
-    Qs_ig_sel.allfilt   = Qs_ig.allfilt(1:N,:);
-    Qs_ig_sel.time      = Qs_ig.time(1:N,:);
-    Qs_ig_sel.colheaders = Qs_ig.colheaders;
-end
 
-%% Get the experimental data to track
 [Tracking] = GetTrackingData(S,pathRepo,joints,N);
 
 %% Bounds
@@ -230,26 +167,15 @@ addpath(genpath(pathBounds));
 % adapt bounds based on user input
 bounds = AdaptBounds(bounds,S,mai);
 
+%% exoskeleton torques
+% function to get exoskeleton torques at mesh points
+ExoVect = GetExoTorques(S,pathRepo,N);
+
 %% Initial guess
-% The initial guess depends on the settings
-pathIG = [pathRepo,'/IG'];
-addpath(genpath(pathIG));
-if S.IGsel == 1 % Quasi-random initial guess
-    guess = getGuess_QR_opti_int(N,nq,NMuscle,scaling,S.v_tgt,jointi,d,S.IG_PelvisY);
-elseif S.IGsel == 2 % Data-informed initial guess
-    if S.IGmodeID == 1 % Data from average walking motion
-        time_IC = [Qs_walk.time(1),Qs_walk.time(end)];
-        guess = getGuess_DI_opti_int_mtp(Qs_walk,nq,N,time_IC,NMuscle,jointi,...
-            scaling,S.v_tgt,d);
-    elseif S.IGmodeID == 2 % Data from average runing motion
-        time_IC = [Qs_run.time(1),Qs_run.time(end)];
-        guess = getGuess_DI_opti_int(Qs_run,nq,N,time_IC,NMuscle,jointi,...
-            scaling,S.v_tgt,d);
-    elseif S.IGmodeID == 3 || S.IGmodeID == 4 % Data from selected motion
-        time_IC = [Qs_ig_sel.time(1),Qs_ig_sel.time(end)];
-        guess = getGuess_DI_opti_int_mtp(Qs_ig_sel,nq,N,time_IC,NMuscle,jointi,scaling,S.v_tgt,d);
-    end
-end
+
+% Data-informed initial guess
+guess = getGuess_DI_tracking_mtp(Tracking.Qs.p,nq,N,NMuscle,jointi,scaling,d);
+
 % update initial guess when it below the lower bound
 if ~isempty(S.Bounds)
     Inds = guess.a(1,:) < bounds.a.lower;
@@ -260,11 +186,6 @@ end
 if ~isempty(S.Bounds.tf)
     guess.tf = nanmean(S.Bounds.tf);
 end
-
-
-%% exoskeleton torques
-% function to get exoskeleton torques at mesh points
-ExoVect = GetExoTorques(S,pathRepo,N);
 
 %% Index helpers
 % get help indexes for left and right leg and for symmetry constraint
@@ -297,8 +218,6 @@ opti.subject_to(bounds.FTtilde.lower'*ones(1,d*N) < FTtilde_col < ...
 opti.set_initial(FTtilde_col, guess.FTtilde_col');
 % Qs at mesh points
 Qs = opti.variable(nq.all,N+1);
-% We want to constraint the pelvis_tx position at the first mesh point,
-% and avoid redundant bounds
 lboundsQsk = bounds.QsQdots.lower(1:2:end)'*ones(1,N+1);
 uboundsQsk = bounds.QsQdots.upper(1:2:end)'*ones(1,N+1);
 opti.subject_to(lboundsQsk < Qs < uboundsQsk);
@@ -420,7 +339,7 @@ Track_IDi = [jointi.hip_flex.l:jointi.subt.r,...
     jointi.trunk.ext:jointi.elb.r];
 Tracking_Q = MX.sym('Tracking_Q',length(Track_IKi));
 Tracking_F = MX.sym('Tracking_F',6);
-Tracking_T = MX.sym('Tracking_M',6);
+% Tracking_T = MX.sym('Tracking_M',6);
 Tracking_ID = MX.sym('Tracking_ID',length(Track_IDi));
 % define the exoskeleton assistive torque
 if F.nnz_in == nq.all*3+2
@@ -444,9 +363,8 @@ h = Tracking.t/N;
 for j=1:d
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Unscale variables
-    Qskj_nsc = Qskj.*(scaling.QsQdots(1:2:end)'*ones(1,size(Qskj,2)/2));
-    Qdotskj_nsc = Qdotskj.*(scaling.QsQdots(2:2:end)'* ...
-        ones(1,size(Qdotskj,2)/2));
+    Qskj_nsc = Qskj.*(scaling.QsQdots(1:2:end)'*ones(1,size(Qskj,2)));
+    Qdotskj_nsc = Qdotskj.*(scaling.QsQdots(2:2:end)'*ones(1,size(Qdotskj,2)));
     FTtildekj_nsc = FTtildekj.*(scaling.FTtilde'*ones(1,size(FTtildekj,2)));
     dFTtildej_nsc = dFTtildej.*scaling.dFTtilde;
     Aj_nsc = Aj.*(scaling.Qdotdots'*ones(1,size(Aj,2)));
@@ -470,29 +388,25 @@ for j=1:d
     qinj_r      = Qskj_nsc(IndexRight,j+1);
     qdotinj_r   = Qdotskj_nsc(IndexRight,j+1);
     [lMTj_r,vMTj_r,MAj_r] = f_lMT_vMT_dM(qinj_r,qdotinj_r);
-    % Here we take the indices from left since the vector is 1:49
+    % Here we take the indices from left since the vector is 1:40
     MAj.hip_flex.r   =  MAj_r(mai(1).mus.l',1);
     MAj.hip_add.r    =  MAj_r(mai(2).mus.l',2);
     MAj.hip_rot.r    =  MAj_r(mai(3).mus.l',3);
     MAj.knee.r       =  MAj_r(mai(4).mus.l',4);
     MAj.ankle.r      =  MAj_r(mai(5).mus.l',5);
     MAj.subt.r       =  MAj_r(mai(6).mus.l',6);
-    % Both legs
-    % In MuscleInfo, we first have the right back muscles (44:46) and
-    % then the left back muscles (47:49). Here we re-organize so that
-    % we have first the left muscles and then the right muscles.
+    % Both legs    
     lMTj_lr = [lMTj_l(1:40,1); lMTj_r(1:40,1)];
     vMTj_lr = [vMTj_l(1:40,1); vMTj_r(1:40,1)];
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Get muscle-tendon forces and derive Hill-equilibrium
-    [Hilldiffj,FTj,Fcej,Fpassj,Fisoj] = ...
-        f_forceEquilibrium_FtildeState_all_tendon(akj(:,j+1),...
+    [Hilldiffj,FTj] = f_forceEquilibrium_FtildeState_all_tendon(akj(:,j+1),...
         FTtildekj_nsc(:,j+1),dFTtildej_nsc(:,j),...
         lMTj_lr,vMTj_lr,tensions);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Get passive joint torques
     Tau_passj_all = f_AllPassiveTorques(Qskj_nsc(:,j+1),Qdotskj_nsc(:,j+1));
-    [Tau_passj,Tau_passj_J] = Unpack_TauPass(Tau_passj_all);
+    Tau_passj = Unpack_TauPass(Tau_passj_all);
     
     % Expression for the state derivatives at the collocation points
     Qsp_nsc      = Qskj_nsc*C(:,j+1);
@@ -610,97 +524,127 @@ for j=1:d
     % Constraints to prevent parts of the skeleton to penetrate each
     % other.
     % Origins calcaneus (transv plane) at minimum 9 cm from each other.
-    ineq_constr3{end+1} = f_Jnn2(Tj(calcOr.r,1) - Tj(calcOr.l,1));
+    % ineq_constr3{end+1} = f_Jnn2(Tj(calcOr.r,1) - Tj(calcOr.l,1));
     % Constraint to prevent the arms to penetrate the skeleton
     % Origins femurs and ipsilateral hands (transv plane) at minimum
     % 18 cm from each other.
-    ineq_constr4{end+1} = f_Jnn2(Tj(femurOr.r,1) - Tj(handOr.r,1));
-    ineq_constr4{end+1} = f_Jnn2(Tj(femurOr.l,1) - Tj(handOr.l,1));
+    % ineq_constr4{end+1} = f_Jnn2(Tj(femurOr.r,1) - Tj(handOr.r,1));
+    % ineq_constr4{end+1} = f_Jnn2(Tj(femurOr.l,1) - Tj(handOr.l,1));
     % Origins tibia (transv plane) at minimum 11 cm from each other.
-    ineq_constr5{end+1} = f_Jnn2(Tj(tibiaOr.r,1) - Tj(tibiaOr.l,1));
+    % ineq_constr5{end+1} = f_Jnn2(Tj(tibiaOr.r,1) - Tj(tibiaOr.l,1));
     % Origins toes (transv plane) at minimum 10 cm from each other.
-    ineq_constr6{end+1} = f_Jnn2(Tj(toesOr.r,1) - Tj(toesOr.l,1));
+    % ineq_constr6{end+1} = f_Jnn2(Tj(toesOr.r,1) - Tj(toesOr.l,1));
+    
+%     % objective funciton
+%     %--------------------------------------------------------------------
+%     % Tracking errors
+%     Qerror = Qskj_nsc(Track_IKi,j)- Tracking_Q;
+%     IDerr = Qskj_nsc(Track_IDi,j)- Tracking_ID;
+%     Ferr = Tj(GRFi.all,1) - Tracking_F;
+%     Merr = Tj(GRFi.Mall,1) - Tracking_T;
+%     % objective function
+%     J = J + W.Qs*B(j+1)*(f_J30(Qerror))*h +... % tracking kinematics
+%         W.GRF*B(j+1)*(f_J6(Ferr./scaling.GRF'))*h +... % tracking GRF forces
+%         W.GRM*B(j+1)*(f_J6(Merr./scaling.GRM'))*h +... % tracking GRF moments
+%         W.ID_act*B(j+1)*(f_J23(IDerr./scaling.T))*h +...  % tracking ID moments
+%         W.a*B(j+1)*(f_J80(akj(:,j+1)'))*h + ...               % implicit activations
+%         W.a*B(j+1)*(f_J2(e_mtpk))*h +...                      % reserve actuators mtp.
+%         W.a*B(j+1)*(f_J8(e_ak))*h +...                        % reserve actuators arms
+%         W.u*B(j+1)*(f_J23(Aj(residuals_noarmsi,j)))*h + ...   % joint accelerations
+%         W.u*B(j+1)*(f_J80(vAk))*h + ...                       % act dyn
+%         W.u*B(j+1)*(f_J80(dFTtildej(:,j)))*h;                 % derivative tendon force
     
     % objective funciton
     %--------------------------------------------------------------------
     % Tracking errors
     Qerror = Qskj_nsc(Track_IKi,j)- Tracking_Q;
-    IDerr = Qskj_nsc(Track_IDi,j)- Tracking_ID;
+    IDerr = Tj(Track_IDi,1)- Tracking_ID;
     Ferr = Tj(GRFi.all,1) - Tracking_F;
-    Merr = Tj(GRFi.Mall,1) - Tracking_T;
     % objective function
     J = J + W.Qs*B(j+1)*(f_J30(Qerror))*h +... % tracking kinematics
         W.GRF*B(j+1)*(f_J6(Ferr./scaling.GRF'))*h +... % tracking GRF forces
-        W.GRM*B(j+1)*(f_J6(Merr./scaling.GRM'))*h +... % tracking GRF moments
         W.ID_act*B(j+1)*(f_J23(IDerr./scaling.T))*h +...  % tracking ID moments
         W.a*B(j+1)*(f_J80(akj(:,j+1)'))*h + ...               % implicit activations
         W.a*B(j+1)*(f_J2(e_mtpk))*h +...                      % reserve actuators mtp.
         W.a*B(j+1)*(f_J8(e_ak))*h +...                        % reserve actuators arms
+        W.a*B(j+1)*(f_J3(e_lumbark))*h +...                   % reserve actuators lumbar
         W.u*B(j+1)*(f_J23(Aj(residuals_noarmsi,j)))*h + ...   % joint accelerations
         W.u*B(j+1)*(f_J80(vAk))*h + ...                       % act dyn
         W.u*B(j+1)*(f_J80(dFTtildej(:,j)))*h;                 % derivative tendon force
+    
+    
     
 end % End loop over collocation points
 eq_constr = vertcat(eq_constr{:});
 ineq_constr1 = vertcat(ineq_constr1{:});
 ineq_constr2 = vertcat(ineq_constr2{:});
-ineq_constr3 = vertcat(ineq_constr3{:});
-ineq_constr4 = vertcat(ineq_constr4{:});
-ineq_constr5 = vertcat(ineq_constr5{:});
-ineq_constr6 = vertcat(ineq_constr6{:});
+% ineq_constr3 = vertcat(ineq_constr3{:});
+% ineq_constr4 = vertcat(ineq_constr4{:});
+% ineq_constr5 = vertcat(ineq_constr5{:});
+% ineq_constr6 = vertcat(ineq_constr6{:});
 
 
 % Casadi function to get constraints and objective
 if F.nnz_in == nq.all*3+2
-    f_coll = Function('f_coll',{ak,aj,FTtildek,FTtildej,Qsk,Qsj,Qdotsk,...
-        Qdotsj,a_ak,a_aj,a_mtpk,a_mtpj,vAk,e_ak,e_mtpk,dFTtildej,Aj,...
-        a_lumbark,a_lumbarj,e_lumbark,Tracking_Q,Tracking_F,Tracking_T,...
-        Tracking_ID,Texok},...
-        {eq_constr,ineq_constr1,ineq_constr2,ineq_constr3,ineq_constr4,...
-        ineq_constr5,ineq_constr6,J});
+%     f_coll = Function('f_coll',{ak,aj,FTtildek,FTtildej,Qsk,Qsj,Qdotsk,...
+%         Qdotsj,a_ak,a_aj,a_mtpk,a_mtpj,vAk,e_ak,e_mtpk,dFTtildej,Aj,...
+%         a_lumbark,a_lumbarj,e_lumbark,Tracking_Q,Tracking_F,Tracking_T,...
+%         Tracking_ID,Texok},...
+%         {eq_constr,ineq_constr1,ineq_constr2,ineq_constr3,ineq_constr4,...
+%         ineq_constr5,ineq_constr6,J});
 else
+%     f_coll = Function('f_coll',{ak,aj,FTtildek,FTtildej,Qsk,Qsj,Qdotsk,...
+%         Qdotsj,a_ak,a_aj,a_mtpk,a_mtpj,vAk,e_ak,e_mtpk,dFTtildej,Aj,...
+%         a_lumbark,a_lumbarj,e_lumbark,Tracking_Q,Tracking_F,Tracking_T,...
+%         Tracking_ID},...
+%         {eq_constr,ineq_constr1,ineq_constr2,ineq_constr3,ineq_constr4,...
+%         ineq_constr5,ineq_constr6,J});
     f_coll = Function('f_coll',{ak,aj,FTtildek,FTtildej,Qsk,Qsj,Qdotsk,...
         Qdotsj,a_ak,a_aj,a_mtpk,a_mtpj,vAk,e_ak,e_mtpk,dFTtildej,Aj,...
-        a_lumbark,a_lumbarj,e_lumbark,Tracking_Q,Tracking_F,Tracking_T,...
-        Tracking_ID},...
-        {eq_constr,ineq_constr1,ineq_constr2,ineq_constr3,ineq_constr4,...
-        ineq_constr5,ineq_constr6,J});
+        a_lumbark,a_lumbarj,e_lumbark,Tracking_Q,Tracking_F,Tracking_ID},...
+        {eq_constr,ineq_constr1,ineq_constr2,J});
 end
 
 % input data for tracking
-DatQ = Tracking.Qs.p.allinterpfilt(:,Track_IKi)';
-DatID = Tracking.ID.p.allinterp(:,Track_IDi)';
+DatQ = Tracking.Qs.p.allinterpfilt(:,Track_IKi+1)'; % +1 because of time vector on first col
+DatID = Tracking.ID.p.allinterp(:,Track_IDi+1)'; % +1 because of time vector on first col
 DatGRF = Tracking.GRF.p.val.allinterp(:,2:end)';
-DatM = Tracking.GRF.p.MorGF.allinterp(:,2:end)';
+% DatM = Tracking.GRF.p.MorGF.allinterp(:,2:end)';
 
 % assign NLP problem to multiple cores
-f_coll_map = f_coll.map(N,parallelMode,S.NThreads);
+f_coll_map = f_coll.map(N,S.parallelMode,S.NThreads);
 if F.nnz_in == nq.all*3+2
-    [coll_eq_constr, coll_ineq_constr1, coll_ineq_constr2, coll_ineq_constr3,...
-        coll_ineq_constr4, coll_ineq_constr5, coll_ineq_constr6, Jall] = f_coll_map(...
-        a(:,1:end-1), a_col, FTtilde(:,1:end-1), FTtilde_col, Qs(:,1:end-1), ...
-        Qs_col, Qdots(:,1:end-1), Qdots_col, a_a(:,1:end-1), a_a_col, ...
-        a_mtp(:,1:end-1), a_mtp_col, vA, e_a, e_mtp, dFTtilde_col, A_col,...
-        a_lumbar(:,1:end-1), a_lumbar_col,e_lumbar,...
-        DatQ,DatGRF,DatM,DatID, ExoVect);
+%     [coll_eq_constr, coll_ineq_constr1, coll_ineq_constr2, coll_ineq_constr3,...
+%         coll_ineq_constr4, coll_ineq_constr5, coll_ineq_constr6, Jall] = f_coll_map(...
+%         a(:,1:end-1), a_col, FTtilde(:,1:end-1), FTtilde_col, Qs(:,1:end-1), ...
+%         Qs_col, Qdots(:,1:end-1), Qdots_col, a_a(:,1:end-1), a_a_col, ...
+%         a_mtp(:,1:end-1), a_mtp_col, vA, e_a, e_mtp, dFTtilde_col, A_col,...
+%         a_lumbar(:,1:end-1), a_lumbar_col,e_lumbar,...
+%         DatQ,DatGRF,DatM,DatID, ExoVect);
 else
-    [coll_eq_constr, coll_ineq_constr1, coll_ineq_constr2, coll_ineq_constr3,...
-        coll_ineq_constr4, coll_ineq_constr5, coll_ineq_constr6, Jall] = f_coll_map(...
+%     [coll_eq_constr, coll_ineq_constr1, coll_ineq_constr2, coll_ineq_constr3,...
+%         coll_ineq_constr4, coll_ineq_constr5, coll_ineq_constr6, Jall] = f_coll_map(...
+%         a(:,1:end-1), a_col, FTtilde(:,1:end-1), FTtilde_col, Qs(:,1:end-1), ...
+%         Qs_col, Qdots(:,1:end-1), Qdots_col, a_a(:,1:end-1), a_a_col, ...
+%         a_mtp(:,1:end-1), a_mtp_col, vA, e_a, e_mtp, dFTtilde_col, A_col,...
+%         a_lumbar(:,1:end-1), a_lumbar_col,e_lumbar,...
+%         DatQ,DatGRF,DatM,DatID);
+     [coll_eq_constr, coll_ineq_constr1, coll_ineq_constr2, Jall] = f_coll_map(...
         a(:,1:end-1), a_col, FTtilde(:,1:end-1), FTtilde_col, Qs(:,1:end-1), ...
         Qs_col, Qdots(:,1:end-1), Qdots_col, a_a(:,1:end-1), a_a_col, ...
         a_mtp(:,1:end-1), a_mtp_col, vA, e_a, e_mtp, dFTtilde_col, A_col,...
         a_lumbar(:,1:end-1), a_lumbar_col,e_lumbar,...
-        DatQ,DatGRF,DatM,DatID);
+        DatQ,DatGRF,DatID);
 end
 
 % constrains
 opti.subject_to(coll_eq_constr == 0);
 opti.subject_to(coll_ineq_constr1(:) >= 0);
 opti.subject_to(coll_ineq_constr2(:) <= 1/tact);
-opti.subject_to(S.Constr.calcn.^2 < coll_ineq_constr3(:) < 4); % origin calcaneus
-opti.subject_to(0.0324 < coll_ineq_constr4(:) < 4); % arms
-opti.subject_to(S.Constr.tibia.^2 < coll_ineq_constr5(:) < 4); % origin tibia minimum x cm away from each other
-opti.subject_to(S.Constr.toes.^2   < coll_ineq_constr6(:) < 4); % origins toes minimum x cm away from each other
+% opti.subject_to(S.Constr.calcn.^2 < coll_ineq_constr3(:) < 4); % origin calcaneus
+% opti.subject_to(0.0324 < coll_ineq_constr4(:) < 4); % arms
+% opti.subject_to(S.Constr.tibia.^2 < coll_ineq_constr5(:) < 4); % origin tibia minimum x cm away from each other
+% opti.subject_to(S.Constr.toes.^2   < coll_ineq_constr6(:) < 4); % origins toes minimum x cm away from each other
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Loop over mesh points
 for k=1:N
@@ -782,6 +726,10 @@ options.ipopt.linear_solver         = S.linear_solver;
 options.ipopt.tol                   = 1*10^(-S.tol_ipopt);
 opti.solver('ipopt', options);
 % Create and save diary
+OutFolder = fullfile(pathRepo,'Results',S.ResultsFolder);
+if ~isfolder(OutFolder)
+    mkdir(OutFolder);
+end
 Outname = fullfile(OutFolder,[S.savename '_log.txt']);
 diary(Outname);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -797,18 +745,12 @@ setup.tolerance.ipopt = S.tol_ipopt;
 setup.bounds = bounds;
 setup.scaling = scaling;
 setup.guess = guess;
+setup.Bools.Tracking = true;
 
+%% save the results
 Outname = fullfile(OutFolder,[S.savename '.mat']);
 Sopt = S;
+setup.dt = Tracking.t;
 save(Outname,'w_opt','stats','setup','Sopt','ExoVect');
-
-
-% debugging
-% i0[80],i1[80x3],i2[80],i3[80x3],i4[31],i5[31x3],i6[31],i7[31x3],i8[8]
-% i9[8x3],i10[2],i11[2x3],i12[80],i13[8],i14[2],i15[80x3],i16[31x3],i17[3],i18[3x3],
-%i19[3],i20[30],i21[6],i22[6],i23[23])
-% [out1,out2,out3,out4,out5,out6,out7,out8] = f_coll(rand(80,1),rand(80,3),rand(80,1),rand(80,3),rand(31,1),rand(31,3),rand(31,1),rand(31,3),rand(8,1),...    % 0-8
-%     rand(8,3),rand(2,1),rand(2,3),rand(80,1),rand(8,1),rand(2,1),rand(80,3),rand(31,3),rand(3,1),rand(3,3),...  % 9-18
-%     rand(3,1),rand(30,1),rand(6,1),rand(6,1),rand(23,1)) % rand 19-23
 end
 

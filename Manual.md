@@ -11,6 +11,10 @@ If you want to use a new model, you first have to approximate the muscle tendon 
 - muscle_spanning_joint_INFO.... (info on indexes of muscles that span each dof)
 - MuscleInfo_... (coefficient of the polynomials)
 
+### Save MT parameters
+
+You also have to save the muscle-tendon paramaters of an opensim model to a .mat file. You can do this for example using the function *3dpredictsim\MuscleModel\Rajagopal2015\SaveMuscleParam.m*
+
 ### Create casadi functions
 
 We then create casadi functions for the most important matlab functions used in the optimization. You can create these casadi functions using the script *CasadiFunctions_all_mtp_CreateDefault.m*. On Line 11 you can select the folder where the casadi functions will be saved.

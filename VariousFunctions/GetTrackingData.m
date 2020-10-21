@@ -49,6 +49,7 @@ Tracking.ID = ID;
 Tracking.Qs = Qs;
 Tracking.GRF = GRF;
 Tracking.t = tend-t0;
+Tracking.tWindow = time_opt.time;
 
 
 end

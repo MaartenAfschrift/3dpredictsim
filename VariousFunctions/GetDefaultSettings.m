@@ -181,6 +181,35 @@ else
     S.PercStance.bool = 0;
 end
 
+% parallel computation settings
+if ~isfield(S,'parallelMode')
+    S.parallelMode = 'thread';
+end
+
+% symmetric motion ?
+if ~isfield(S,'Symmetric')
+    S.Symmetric = true;
+end
+
+% oeriodic motion
+if ~isfield(S,'Periodic')
+    S.Periodic = false;
+end
+
+% model selection
+if isfield(S,'Model')
+    if ~isfield(S.Model,'Rajagopal')
+        S.Model.Rajagopal = false;
+    end
+    if ~isfield(S.Model,'Default')
+        S.Model.Default = true;
+    end
+else
+    S.Model.Rajagopal = false;
+    S.Model.Default = true;
+end
+
+
 % Print the settings to the screen
 disp(S);
 end

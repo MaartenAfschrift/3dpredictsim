@@ -293,17 +293,17 @@ guess.FTtilde   = (guess.FTtilde)./repmat(scaling.FTtilde,N+1,1);
 guess.vA        = (guess.vA)./repmat(scaling.vA,N,size(guess.vA,2));
 guess.dFTtilde  = (guess.dFTtilde)./repmat(scaling.dFTtilde,N,...
     size(guess.dFTtilde,2));
-guess.a_lumbar_col = zeros(d*N,nq.trunk);
 
 
 %% Collocation points
-    guess.a_col = zeros(d*N,NMuscle);
-    guess.FTtilde_col = zeros(d*N,NMuscle);
-    guess.QsQdots_col = zeros(d*N,2*nq.all);
-    guess.a_a_col = zeros(d*N,nq.arms);
-    guess.a_mtp_col = zeros(d*N,nq.mtp);
-    guess.dFTtilde_col = zeros(d*N,NMuscle);
-    guess.Qdotdots_col = zeros(d*N,nq.all);
+guess.a_col = zeros(d*N,NMuscle);
+guess.FTtilde_col = zeros(d*N,NMuscle);
+guess.QsQdots_col = zeros(d*N,2*nq.all);
+guess.a_a_col = zeros(d*N,nq.arms);
+guess.a_mtp_col = zeros(d*N,nq.mtp);
+guess.dFTtilde_col = zeros(d*N,NMuscle);
+guess.Qdotdots_col = zeros(d*N,nq.all);
+guess.a_lumbar_col = zeros(d*N,nq.trunk);
 for k=1:N
     guess.a_col((k-1)*d+1:k*d,:) = repmat(guess.a(k,:),d,1); 
     guess.FTtilde_col((k-1)*d+1:k*d,:) = repmat(guess.FTtilde(k,:),d,1);

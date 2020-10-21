@@ -137,8 +137,8 @@ bounds.Qs.lower(jointi.elb.r) = bounds.Qs.lower(jointi.elb.l);
 % The bounds are extended by the absolute difference between upper
 % and lower bounds.
 Qs_range = abs(bounds.Qs.upper - bounds.Qs.lower);
-bounds.Qs.lower = bounds.Qs.lower - Qs_range;
-bounds.Qs.upper = bounds.Qs.upper + Qs_range;
+bounds.Qs.lower = bounds.Qs.lower - 2*Qs_range;
+bounds.Qs.upper = bounds.Qs.upper + 2*Qs_range;
 
 %% Qdots
 % The extreme values are selected as upper/lower bounds, which are then
@@ -250,8 +250,8 @@ bounds.Qdots.lower(jointi.elb.r) = bounds.Qdots.lower(jointi.elb.l);
 % The bounds are extended by the absolute difference between upper
 % and lower bounds.
 Qdots_range = abs(bounds.Qdots.upper - bounds.Qdots.lower);
-bounds.Qdots.lower = bounds.Qdots.lower - Qdots_range;
-bounds.Qdots.upper = bounds.Qdots.upper + Qdots_range;
+bounds.Qdots.lower = bounds.Qdots.lower - 2*Qdots_range;
+bounds.Qdots.upper = bounds.Qdots.upper + 2*Qdots_range;
 
 %% Qdotdots
 % The extreme values are selected as upper/lower bounds, which are then

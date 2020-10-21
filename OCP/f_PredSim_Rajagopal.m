@@ -1,21 +1,15 @@
 function [] = f_PredSim_Rajagopal(S)
 
 %% Adding the casadi path seems to be needed to run processes in batch
-name = getenv('COMPUTERNAME');
-if strcmp(name,'GBW-D-W2711')
-    addpath(genpath('C:\GBW_MyPrograms\casadi-windows-matlabR2016a-v3.5.1'));
-end
-%% Default settings
+AddCasadiPaths();
 
+%% Default settings
 S = GetDefaultSettings(S);
 
 %% User inputs (typical settings structure)
-% load default CasadiFunctions
-
 % settings for optimization
 N           = S.N;          % number of mesh intervals
 W           = S.W;          % weights optimization
-parallelMode = 'thread';
 
 %% Load external functions
 import casadi.*
@@ -32,12 +26,7 @@ pathExternalFunctions = [pathRepo,'/ExternalFunctions'];
 cd(pathExternalFunctions)
 F  = external('F',S.ExternalFunc);
 cd(pathmain);
-%% Output folder
-% save the results in the right folder:
-OutFolder = fullfile(pathRepo,'Results',S.ResultsFolder);
-if ~isfolder(OutFolder)
-    mkdir(OutFolder);
-end
+
 
 %% Indices external function
 % Indices of the elements in the external functions
@@ -51,15 +40,13 @@ trunki              = jointi.trunk.ext:jointi.trunk.rot; % trunk
 armsi               = jointi.sh_flex.l:jointi.elb.r; % arms
 mtpi                = jointi.mtp.l:jointi.mtp.r; % mtps
 residuals_noarmsi   = jointi.pelvis.tilt:jointi.trunk.rot; % all but arms
-roti                = [jointi.pelvis.tilt:jointi.pelvis.rot,...
-    jointi.hip_flex.l:jointi.elb.r];
 % Number of degrees of freedom for later use
 nq.all      = length(residualsi); % all
 nq.abs      = length(ground_pelvisi); % ground-pelvis
 nq.trunk    = length(trunki); % trunk
 nq.arms     = length(armsi); % arms
 nq.mtp      = length(mtpi); % arms
-nq.leg      = 10; % #joints needed for polynomials
+nq.leg      = 7; % #joints needed for polynomials
 % Second, origins bodies.
 % Calcaneus
 calcOr.r    = 32:33;
@@ -81,17 +68,6 @@ tibiaOr.all = [tibiaOr.r,tibiaOr.l];
 toesOr.r   = 48:49;
 toesOr.l   = 50:51;
 toesOr.all = [toesOr.r,toesOr.l];
-
-%% check if we are using a proper .dll function in this implementation
-nInput = F.nnz_in;
-if nInput == nq.all*3 && S.ExoBool == 1
-    disp(['Warning: you have to use a .dll function with the exoskeleton moments',...
-        'as input arguments to simulate the exoskeleton']);
-    disp(['In this new version, we implemented the exoskeleton torque ',...
-        'as a torque acting at the tibia and calcaneus and not as an ideal ',...
-        'acutation at the ankle joint']);
-    disp('Please look at the implementation in : SimExo_3D_talus_out.cpp');
-end
 
 %% Collocation scheme
 % We use a pseudospectral direct collocation method, i.e. we use Lagrange
@@ -256,11 +232,12 @@ end
 
 %% exoskeleton torques
 % function to get exoskeleton torques at mesh points
-ExoVect = getExoTorques(S,pathRepo);
+ExoVect = GetExoTorques(S,pathRepo,N);
 
 %% Index helpers
 % get help indexes for left and right leg and for symmetry constraint
-[IndexLeft,IndexRight,QsInvA,QsInvB,QdotsInvA,QdotsInvB,orderQsOpp] = GetIndexHelper(S);
+[IndexLeft,IndexRight,QsInvA,QsInvB,QdotsInvA,...
+    QdotsInvB,orderQsOpp] = GetIndexHelper(S,jointi);
 
 %% OCP create variables and bounds
 % using opti
@@ -494,7 +471,7 @@ for j=1:d
     % Get metabolic energy rate Bhargava et al. (2004)
     [e_totj,~,~,~,~,~] = fgetMetabolicEnergySmooth2004all(...
         akj(:,j+1),akj(:,j+1),lMtildej,vMj,Fcej,Fpassj,...
-        MuscleMass.MassM',pctsts,Fisoj,body_mass,10);
+        MuscleMass.MassM',pctsts,Fisoj,S.mass,10);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Get passive joint torques
     Tau_passj_all = f_AllPassiveTorques(Qskj_nsc(:,j+1),Qdotskj_nsc(:,j+1));
@@ -532,7 +509,7 @@ for j=1:d
     eq_constr{end+1} = (h*da_lumbardtj - a_lumbarp);
     % Add contribution to the quadrature function
     J = J + 1*(...
-        W.E*B(j+1)      *(f_J80exp(e_totj,W.exp_E))/body_mass*h + ... % metabolic energy
+        W.E*B(j+1)      *(f_J80exp(e_totj,W.exp_E))/S.mass*h + ... % metabolic energy
         W.A*B(j+1)      *(f_J80(akj(:,j+1)'))*h + ...               % implicit activations
         W.ArmE*B(j+1)   *(f_J8(e_ak))*h +...                        % reserve actuators arms
         W.Lumbar*B(j+1) *(f_J3(e_lumbark))*h +...                   % reserve actuators lumbar
@@ -655,7 +632,7 @@ f_coll = Function('f_coll',{tfk,ak,aj,FTtildek,FTtildej,Qsk,Qsj,Qdotsk,...
     {eq_constr,ineq_constr1,ineq_constr2,ineq_constr3,ineq_constr4,...
     ineq_constr5,ineq_constr6,J});
 % assign NLP problem to multiple cores
-f_coll_map = f_coll.map(N,parallelMode,S.NThreads);
+f_coll_map = f_coll.map(N,S.parallelMode,S.NThreads);
 [coll_eq_constr, coll_ineq_constr1, coll_ineq_constr2, coll_ineq_constr3,...
     coll_ineq_constr4, coll_ineq_constr5, coll_ineq_constr6, Jall] = f_coll_map(tf,...
     a(:,1:end-1), a_col, FTtilde(:,1:end-1), FTtilde_col, Qs(:,1:end-1), ...
@@ -755,6 +732,10 @@ options.ipopt.linear_solver         = S.linear_solver;
 options.ipopt.tol                   = 1*10^(-S.tol_ipopt);
 opti.solver('ipopt', options);
 % Create and save diary
+OutFolder = fullfile(pathRepo,'Results',S.ResultsFolder);
+if ~isfolder(OutFolder)
+    mkdir(OutFolder);
+end
 Outname = fullfile(OutFolder,[S.savename '_log.txt']);
 diary(Outname);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -771,6 +752,7 @@ setup.bounds = bounds;
 setup.scaling = scaling;
 setup.guess = guess;
 
+%% Save the results
 Outname = fullfile(OutFolder,[S.savename '.mat']);
 Sopt = S;
 save(Outname,'w_opt','stats','setup','Sopt','ExoVect');

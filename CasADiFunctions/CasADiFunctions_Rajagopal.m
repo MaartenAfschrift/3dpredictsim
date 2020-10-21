@@ -8,11 +8,11 @@
 clear all; close all; clc;
 import casadi.*
 ExtPoly = '';
-S.CasadiFunc_Folders = 'Casadi_Rajagopal2015';
+S.CasadiFunc_Folders = 'Casadi_Rajagopal2015_LongKneeM';
 subject              = 'Rajagopal2015';
-% if isfolder(S.CasadiFunc_Folders)
-%     error('Never changes the casadi functions in an existing folder, these functions are important to analyse optimization results (from the optimal states and controls');
-% end
+if isfolder(S.CasadiFunc_Folders)
+    error('Never changes the casadi functions in an existing folder, these functions are important to analyse optimization results (from the optimal states and controls');
+end
 pathRepo        = 'C:\Users\u0088756\Documents\FWO\Software\ExoSim\SimExo_3D\3dpredictsim';
 nq.leg          = 7; % #joints needed for polynomials
 stiffnessArm    = 0;
@@ -26,41 +26,43 @@ aTendon = 35*ones(NMuscle,1);
 % IndexCalf = [32 33 34 78 79 80];    % adjust stiffness of the calf muscles
 % aTendon(IndexCalf) = 35;
 shift = getShift(aTendon);
+
+%% Muscle-tendon parameters
+% Muscles from one leg and from the back
+muscleNames = {'addbrev_r','addlong_r','addmagDist_r','addmagIsch_r','addmagMid_r','addmagProx_r',...
+    'bflh_r','bfsh_r','edl_r','ehl_r','fdl_r','fhl_r','gaslat_r','gasmed_r','glmax1_r','glmax2_r',...
+    'glmax3_r','glmed1_r','glmed2_r','glmed3_r','glmin1_r','glmin2_r','glmin3_r','grac_r','iliacus_r',...
+    'perbrev_r','perlong_r','piri_r','psoas_r','recfem_r','sart_r','semimem_r','semiten_r','soleus_r',...
+    'tfl_r','tibant_r','tibpost_r','vasint_r','vaslat_r','vasmed_r'};
+% Muscle indices for later use
+pathmusclemodel = fullfile(pathRepo,'MuscleModel',subject);
+addpath(genpath(pathmusclemodel));
+% (1:end-3), since we do not want to count twice the back muscles
+musi = 1:40;
+% Total number of muscles
+NMuscle = length(muscleNames)*2;
+% Muscle-tendon parameters. Row 1: maximal isometric forces; Row 2: optimal
+% fiber lengths; Row 3: tendon slack lengths; Row 4: optimal pennation
+% angles; Row 5: maximal contraction velocities
+MTFileName = ['/MTparameters_' subject '_LongKneeM.mat'];
+warning('Warning: adapted MTparameters of the rajagopal model used');
+load([pathmusclemodel, MTFileName]);
+MTparameters_m = [MTparameters(:,musi),MTparameters(:,musi)];
+% Indices of the muscles actuating the different joints for later use
+pathpolynomial = fullfile(pathRepo,'Polynomials',subject);
+addpath(genpath(pathpolynomial));
+tl = load([pathpolynomial,'/muscle_spanning_joint_INFO_',subject,ExtPoly, '.mat']);
+[~,mai] = MomentArmIndices(muscleNames,tl.muscle_spanning_joint_INFO);
+
+% Parameters for activation dynamics
+tact = 0.015; % Activation time constant
+tdeact = 0.06; % Deactivation time constant
+
 %% Indices external function
 % Indices of the elements in the external functions
 % External function: F
 % First, joint torques.
-jointi.pelvis.tilt  = 1;
-jointi.pelvis.list  = 2;
-jointi.pelvis.rot   = 3;
-jointi.pelvis.tx    = 4;
-jointi.pelvis.ty    = 5;
-jointi.pelvis.tz    = 6;
-jointi.hip_flex.l   = 7;
-jointi.hip_add.l    = 8;
-jointi.hip_rot.l    = 9;
-jointi.hip_flex.r   = 10;
-jointi.hip_add.r    = 11;
-jointi.hip_rot.r    = 12;
-jointi.knee.l       = 13;
-jointi.knee.r       = 14;
-jointi.ankle.l      = 15;
-jointi.ankle.r      = 16;
-jointi.subt.l       = 17;
-jointi.subt.r       = 18;
-jointi.mtp.l        = 19;
-jointi.mtp.r        = 20;
-jointi.trunk.ext    = 21;
-jointi.trunk.ben    = 22;
-jointi.trunk.rot    = 23;
-jointi.sh_flex.l    = 24;
-jointi.sh_add.l     = 25;
-jointi.sh_rot.l     = 26;
-jointi.sh_flex.r    = 27;
-jointi.sh_add.r     = 28;
-jointi.sh_rot.r     = 29;
-jointi.elb.l        = 30;
-jointi.elb.r        = 31;
+jointi = getJointi();
 % Vectors of indices for later use
 residualsi          = jointi.pelvis.tilt:jointi.elb.r; % all
 ground_pelvisi      = jointi.pelvis.tilt:jointi.pelvis.tz; % ground-pelvis
@@ -111,34 +113,7 @@ calcOrall.all   = [calcOrall.r,calcOrall.l];
 NcalcOrall      = length(calcOrall.all);
 
 
-%% Muscle-tendon parameters
-% Muscles from one leg and from the back
-muscleNames = {'addbrev_r','addlong_r','addmagDist_r','addmagIsch_r','addmagMid_r','addmagProx_r',...
-    'bflh_r','bfsh_r','edl_r','ehl_r','fdl_r','fhl_r','gaslat_r','gasmed_r','glmax1_r','glmax2_r',...
-    'glmax3_r','glmed1_r','glmed2_r','glmed3_r','glmin1_r','glmin2_r','glmin3_r','grac_r','iliacus_r',...
-    'perbrev_r','perlong_r','piri_r','psoas_r','recfem_r','sart_r','semimem_r','semiten_r','soleus_r',...
-    'tfl_r','tibant_r','tibpost_r','vasint_r','vaslat_r','vasmed_r'};
-% Muscle indices for later use
-pathmusclemodel = fullfile(pathRepo,'MuscleModel',subject);
-addpath(genpath(pathmusclemodel));
-% (1:end-3), since we do not want to count twice the back muscles
-musi = 1:40;
-% Total number of muscles
-NMuscle = length(muscleNames)*2;
-% Muscle-tendon parameters. Row 1: maximal isometric forces; Row 2: optimal
-% fiber lengths; Row 3: tendon slack lengths; Row 4: optimal pennation
-% angles; Row 5: maximal contraction velocities
-load([pathmusclemodel,'/MTparameters_',subject, ExtPoly, '.mat']);
-MTparameters_m = [MTparameters(:,musi),MTparameters(:,musi)];
-% Indices of the muscles actuating the different joints for later use
-pathpolynomial = fullfile(pathRepo,'Polynomials',subject);
-addpath(genpath(pathpolynomial));
-tl = load([pathpolynomial,'/muscle_spanning_joint_INFO_',subject,ExtPoly, '.mat']);
-[~,mai] = MomentArmIndices(muscleNames,tl.muscle_spanning_joint_INFO);
 
-% Parameters for activation dynamics
-tact = 0.015; % Activation time constant
-tdeact = 0.06; % Deactivation time constant
 
 %% Metabolic energy model parameters
 % We extract the specific tensions and slow twitch rations.

@@ -7,7 +7,7 @@
 % Author: Antoine Falisse
 % Date: 12/19/2018
 % 
-function guess = getGuess_DI_tracking_mtp(Qs,nq,N,NMuscle,jointi,scaling,cs,csc)
+function guess = getGuess_DI_tracking_mtp(Qs,nq,N,NMuscle,jointi,scaling,d)
 
 %% Spline approximation of Qs to get Qdots and Qdotdots
 Qs_spline.data = zeros(size(Qs.allinterpfilt));
@@ -193,109 +193,55 @@ guess.Qdotdots(:,jointi.sh_rot.r) = Qdotdots_spline.data(:,strcmp(Qs.colheaders(
 guess.Qdotdots(:,jointi.elb.l) = Qdotdots_spline.data(:,strcmp(Qs.colheaders(1,:),'elbow_flex_l'));
 guess.Qdotdots(:,jointi.elb.r) = Qdotdots_spline.data(:,strcmp(Qs.colheaders(1,:),'elbow_flex_r'));
 
+guess.QsQdots  = [guess.QsQdots ; guess.QsQdots(end,:)];
+guess.Qdotdots = [guess.Qdotdots; guess.Qdotdots(end,:)];
+
 %% Muscle variables
-guess.a = 0.1*ones(N,NMuscle);
+guess.a = 0.1*ones(N+1,NMuscle);
 guess.vA = 0.01*ones(N,NMuscle);
-guess.FTtilde = 0.1*ones(N,NMuscle);
+guess.FTtilde = 0.1*ones(N+1,NMuscle);
 guess.dFTtilde = 0.01*ones(N,NMuscle);
 
 %% Arm activations
-guess.a_a = 0.1*ones(N,nq.arms);
+guess.a_a = 0.1*ones(N+1,nq.arms);
 guess.e_a = 0.1*ones(N,nq.arms);
 
 %% Mtp activations
-guess.a_mtp = 0.1*ones(N,nq.mtp);
+guess.a_mtp = 0.1*ones(N+1,nq.mtp);
 guess.e_mtp = 0.1*ones(N,nq.mtp);
 
-%% Parameters contact model
-% Original values
-B_locSphere_s1_r = [0.00190115788407966, -0.00382630379623308];
-guess.params = B_locSphere_s1_r;
-B_locSphere_s2_r = [0.148386399942063, -0.028713422052654];
-guess.params = [guess.params, B_locSphere_s2_r];
-B_locSphere_s3_r = [0.133001170607051, 0.0516362473449566];
-guess.params = [guess.params, B_locSphere_s3_r];
-B_locSphere_s4_r = [0.06, -0.0187603084619177];  
-guess.params = [guess.params, B_locSphere_s4_r]; 
-if cs == 5|| cs == 6
-    B_locSphere_s5_r = [0.0662346661991635, 0.0263641606741698];
-    guess.params = [guess.params,B_locSphere_s5_r];
-    if cs == 6
-        B_locSphere_s6_r = [0.045, 0.0618569567549652];
-        guess.params = [guess.params,B_locSphere_s6_r];
-    end
-end
-if cs == 4 && csc == 2
-    % Different configuration (1&2 on calcn, 4&6 on toes, 3&5 removed)
-    % Original values
-    guess.params = B_locSphere_s1_r;
-    guess.params = [guess.params, B_locSphere_s2_r];
-    guess.params = [guess.params, B_locSphere_s4_r];
-    B_locSphere_s6_r = [0.045, 0.0618569567549652];
-    guess.params = [guess.params, B_locSphere_s6_r];
-end
-if (cs == 4 && csc == 3)
-    B_locSphere_s1_r = [0.00190115788407966, -0.00382630379623308];
-    guess.params = B_locSphere_s1_r;
-    B_locSphere_s3_r = [0.130, 0.035];
-    guess.params = [guess.params, B_locSphere_s3_r];
-    B_locSphere_s4_r = [0.05, -0.015];   
-    guess.params = [guess.params, B_locSphere_s4_r]; 
-    B_locSphere_s6_r = [0.0125, 0.0175];
-    guess.params = [guess.params,B_locSphere_s6_r];
-end
-if (cs == 5 && csc == 2) || (cs == 5 && csc == 3)
-    B_locSphere_s1_r = [0.00190115788407966, -0.00382630379623308];
-    guess.params = B_locSphere_s1_r;
-    B_locSphere_s5_r = [0.0662346661991635, 0.026];
-    guess.params = [guess.params,B_locSphere_s5_r];
-    B_locSphere_s3_r = [0.130, 0.035];
-    guess.params = [guess.params, B_locSphere_s3_r];
-    B_locSphere_s4_r = [0.05, -0.015];   
-    guess.params = [guess.params, B_locSphere_s4_r]; 
-    B_locSphere_s6_r = [0.0125, 0.0175];
-    guess.params = [guess.params,B_locSphere_s6_r];
-end
-if (cs == 6 && csc == 2) || (cs == 6 && csc == 3)
-    B_locSphere_s1_r = [0.00190115788407966, -0.00382630379623308];
-    guess.params = B_locSphere_s1_r;
-    B_locSphere_s2_r = [0.148386399942063, -0.02];
-    guess.params = [guess.params, B_locSphere_s2_r];
-    B_locSphere_s3_r = [0.130, 0.035];
-    guess.params = [guess.params, B_locSphere_s3_r];
-    B_locSphere_s4_r = [0.05, -0.015];  
-    guess.params = [guess.params, B_locSphere_s4_r]; 
-    B_locSphere_s5_r = [B_locSphere_s5_r(1), 0.026];
-    guess.params = [guess.params,B_locSphere_s5_r];
-    B_locSphere_s6_r = [0.0125, 0.0175];
-    guess.params = [guess.params,B_locSphere_s6_r];
-end
-if (cs == 6 && csc == 4) || (cs == 6 && csc == 6)
-    B_locSphere_s1_r = [0, 0];
-    guess.params = B_locSphere_s1_r;
-    B_locSphere_s2_r = [0.065, 0.025];
-    guess.params = [guess.params,B_locSphere_s2_r];
-    B_locSphere_s3_r = [0.130, 0.035];
-    guess.params = [guess.params, B_locSphere_s3_r];
-    B_locSphere_s4_r = [0.15, -0.025];
-    guess.params = [guess.params, B_locSphere_s4_r];
-    B_locSphere_s5_r = [0.05, -0.015];   
-    guess.params = [guess.params, B_locSphere_s5_r]; 
-    B_locSphere_s6_r = [0.015, 0.035];
-    guess.params = [guess.params,B_locSphere_s6_r];
-end
-IG_rad = 0.032*ones(1,cs);
-guess.params = [guess.params,IG_rad];
+%% Lumbar activations
+guess.a_lumbar = 0.1*ones(N+1,nq.trunk);
+guess.e_lumbar = 0.1*ones(N,nq.trunk);
 
 %% Scaling
-guess.QsQdots   = guess.QsQdots./repmat(scaling.QsQdots,N,1);
-guess.Qdotdots  = guess.Qdotdots./repmat(scaling.Qdotdots,N,1);
-guess.a         = (guess.a)./repmat(scaling.a,N,size(guess.a,2));
-guess.FTtilde   = (guess.FTtilde)./repmat(scaling.FTtilde,N,1);
+guess.QsQdots   = guess.QsQdots./repmat(scaling.QsQdots,N+1,1);
+guess.Qdotdots  = guess.Qdotdots./repmat(scaling.Qdotdots,N+1,1);
+guess.a         = (guess.a)./repmat(scaling.a,N+1,size(guess.a,2));
+guess.FTtilde   = (guess.FTtilde)./repmat(scaling.FTtilde,N+1,1);
 guess.vA        = (guess.vA)./repmat(scaling.vA,N,size(guess.vA,2));
 guess.dFTtilde  = (guess.dFTtilde)./repmat(scaling.dFTtilde,N,...
     size(guess.dFTtilde,2));
-% no need to scale the IG for the arm activations / excitations
-guess.params        = guess.params.*scaling.params.v + scaling.params.r;
+
+%% Collocation points
+guess.a_col = zeros(d*N,NMuscle);
+guess.FTtilde_col = zeros(d*N,NMuscle);
+guess.QsQdots_col = zeros(d*N,2*nq.all);
+guess.a_mtp_col = zeros(d*N,nq.mtp);
+guess.a_a_col = zeros(d*N,nq.arms);
+guess.dFTtilde_col = zeros(d*N,NMuscle);
+guess.Qdotdots_col = zeros(d*N,nq.all);
+guess.a_lumbar_col = zeros(d*N,nq.trunk);
+for k=1:N
+    guess.a_col((k-1)*d+1:k*d,:) = repmat(guess.a(k,:),d,1);
+    guess.FTtilde_col((k-1)*d+1:k*d,:) = repmat(guess.FTtilde(k,:),d,1);
+    guess.QsQdots_col((k-1)*d+1:k*d,:) = repmat(guess.QsQdots(k,:),d,1);
+    guess.a_a_col((k-1)*d+1:k*d,:) = repmat(guess.a_a(k,:),d,1);
+    guess.dFTtilde_col((k-1)*d+1:k*d,:) = repmat(guess.dFTtilde(k,:),d,1);
+    guess.Qdotdots_col((k-1)*d+1:k*d,:) = repmat(guess.Qdotdots(k,:),d,1);
+    guess.a_mtp_col((k-1)*d+1:k*d,:) = repmat(guess.a_mtp(k,:),d,1);
+    guess.a_lumbar_col((k-1)*d+1:k*d,:) = repmat(guess.a_lumbar_col(k,:),d,1);
+end
+
 
 end
