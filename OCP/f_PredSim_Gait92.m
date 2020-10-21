@@ -80,7 +80,7 @@ d = 3; % degree of interpolating polynomial
 method = 'radau'; % collocation method
 [~,C,D,B] = CollocationScheme(d,method);
 
-%% Muscle-tendon parameters
+%% Muscle information
 % Muscles from one leg and from the back
 muscleNames = {'glut_med1_r','glut_med2_r','glut_med3_r',...
     'glut_min1_r','glut_min2_r','glut_min3_r','semimem_r',...
@@ -98,14 +98,9 @@ pathmusclemodel = [pathRepo,'/MuscleModel'];
 addpath(genpath(pathmusclemodel));
 % Total number of muscles
 NMuscle = length(muscleNames(1:end-3))*2;
-% Muscle-tendon parameters. Row 1: maximal isometric forces; Row 2: optimal
-% fiber lengths; Row 3: tendon slack lengths; Row 4: optimal pennation
-% angles; Row 5: maximal contraction velocities
-pathpolynomial = fullfile(pathRepo,'Polynomials',subject);
-addpath(genpath(pathpolynomial));
-tl = load([pathpolynomial,'/muscle_spanning_joint_INFO_',subject,'_mtp.mat']);
-[~,mai] = MomentArmIndices(muscleNames(1:end-3),...
-    tl.muscle_spanning_joint_INFO(1:end-3,:));
+pathpolynomial = fullfile(pathRepo,'Polynomials',S.PolyFolder); % default location 
+tl = load([pathpolynomial,'/muscle_spanning_joint_INFO.mat']);
+[~,mai] = MomentArmIndices(muscleNames(1:end-3),tl.muscle_spanning_joint_INFO);
 
 % Parameters for activation dynamics
 tact = 0.015; % Activation time constant
@@ -160,7 +155,6 @@ end
 IKfile_bounds = fullfile(pathRepo, S.IKfile_Bounds);
 
 % We extract experimental data to set bounds and initial guesses if needed
-pathData = [pathRepo,'/OpenSimModel/',subject];
 joints = {'pelvis_tilt','pelvis_list','pelvis_rotation','pelvis_tx',...
     'pelvis_ty','pelvis_tz','hip_flexion_l','hip_adduction_l',...
     'hip_rotation_l','hip_flexion_r','hip_adduction_r','hip_rotation_r',...
@@ -170,7 +164,7 @@ joints = {'pelvis_tilt','pelvis_list','pelvis_rotation','pelvis_tx',...
     'arm_add_l','arm_rot_l','arm_flex_r','arm_add_r','arm_rot_r',...
     'elbow_flex_l','elbow_flex_r'};
 Qs_walk          = getIK(IKfile_bounds,joints);
-[bounds,scaling] = getBounds_all_mtp(Qs_walk,NMuscle,nq,jointi,v_tgt);
+[bounds,scaling] = getBounds_all_mtp(Qs_walk,NMuscle,nq,jointi,S.v_tgt);
 
 % adapt bounds based on user input
 bounds = AdaptBounds(bounds,S,mai);
@@ -178,33 +172,33 @@ bounds = AdaptBounds(bounds,S,mai);
 % The initial guess depends on the settings
 pathIG = [pathRepo,'/IG'];
 addpath(genpath(pathIG));
-if IGsel == 1 % Quasi-random initial guess
-    guess = getGuess_QR_opti_int(N,nq,NMuscle,scaling,v_tgt,jointi,d,S.IG_PelvisY);
-elseif IGsel == 2 % Data-informed initial guess
-    if IGm < 2 % Data from average walking motion
+if S.IGsel == 1 % Quasi-random initial guess
+    guess = getGuess_QR_opti_int(N,nq,NMuscle,scaling,S.v_tgt,jointi,d,S.IG_PelvisY);
+elseif S.IGsel == 2 % Data-informed initial guess
+    if S.IGmodeID  < 2 % Data from average walking motion
         IKfile_guess    = fullfile(pathRepo, S.IKfile_guess);
         Qs_guess        = getIK(IKfile_guess,joints);
         time_IC         = [Qs_guess.time(1),Qs_guess.time(end)];
         guess = getGuess_DI_opti_int_mtp(Qs_guess,nq,N,time_IC,NMuscle,jointi,...
-            scaling,v_tgt,d);
-    elseif IGm == 3 || IGm == 4 % Data from selected motion
+            scaling,S.v_tgt,d);
+    elseif S.IGmodeID == 3 || S.IGmodeID == 4 % Data from selected motion
         % Extract joint positions from existing motion (previous results)
-        if S.IGm == 3
+        if S.IGmodeID == 3
             GuessFolder = fullfile(pathRepo,'Results',S.ResultsF_ig);
-        elseif S.IGm ==4
+        elseif S.IGmodeID ==4
             GuessFolder = fullfile(pathRepo,'IG','data');
         end
         pathIK      = fullfile(GuessFolder,[S.savename_ig '.mot']);
         Qs_ig       = getIK(pathIK,joints);
-        % When saving the results, we save a full gait cycle (2*N) so here we
+        % When saving the results, we save a 2 full gait cycle (4*N) so here we
         % only select 1:N to have half a gait cycle
         nfr = length(Qs_ig.allfilt(:,1));
-        frSel = round(nfr./2);
+        frSel = round(nfr./4);
         Qs_ig_sel.allfilt   = Qs_ig.allfilt(1:frSel,:);
         Qs_ig_sel.time      = Qs_ig.time(1:frSel,:);
         Qs_ig_sel.colheaders = Qs_ig.colheaders;
         time_IC = [Qs_ig_sel.time(1),Qs_ig_sel.time(end)];
-        guess = getGuess_DI_opti_int_mtp(Qs_ig_sel,nq,N,time_IC,NMuscle,jointi,scaling,v_tgt,d);
+        guess = getGuess_DI_opti_int_mtp(Qs_ig_sel,nq,N,time_IC,NMuscle,jointi,scaling,S.v_tgt,d);
     end
 end
 
@@ -445,7 +439,7 @@ for j=1:d
     % Get metabolic energy rate Bhargava et al. (2004)
     [e_totj,~,~,~,~,~] = fgetMetabolicEnergySmooth2004all(...
         akj(:,j+1),akj(:,j+1),lMtildej,vMj,Fcej,Fpassj,...
-        MuscleMass.MassM',pctsts,Fisoj,body_mass,10);
+        MuscleMass.MassM',pctsts,Fisoj,S.mass,10);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Get passive joint torques
     Tau_passj_all = f_AllPassiveTorques(Qskj_nsc(:,j+1),Qdotskj_nsc(:,j+1));
@@ -496,7 +490,7 @@ for j=1:d
     eq_constr{end+1} = (h*da_mtpdtj - a_mtpp);
     % Add contribution to the quadrature function
     J = J + 1*(...
-        W.E*B(j+1)      *(f_J92exp(e_totj,exp_E))/body_mass*h + ...
+        W.E*B(j+1)      *(f_J92exp(e_totj,W.exp_E))/S.mass*h + ...
         W.A*B(j+1)      *(f_J92(akj(:,j+1)'))*h + ...
         W.ArmE*B(j+1)   *(f_J8(e_ak))*h +...
         W.Mtp*B(j+1)    *(f_J2(e_mtpk))*h +...
@@ -706,7 +700,7 @@ end
 Qs_nsc = Qs.*(scaling.QsQdots(1:2:end)'*ones(1,N+1));
 dist_trav_tot = Qs_nsc(jointi.pelvis.tx,end) -  Qs_nsc(jointi.pelvis.tx,1);
 vel_aver_tot = dist_trav_tot/tf;
-opti.subject_to(vel_aver_tot - v_tgt == 0)
+opti.subject_to(vel_aver_tot - S.v_tgt == 0)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Scale cost function
 Jall_sc = sum(Jall)/dist_trav_tot;
@@ -716,8 +710,8 @@ opti.minimize(Jall_sc);
 options.ipopt.hessian_approximation = 'limited-memory';
 options.ipopt.mu_strategy           = 'adaptive';
 options.ipopt.max_iter              = 10000;
-options.ipopt.linear_solver         = linear_solver;
-options.ipopt.tol                   = 1*10^(-tol_ipopt);
+options.ipopt.linear_solver         = S.linear_solver;
+options.ipopt.tol                   = 1*10^(-S.tol_ipopt);
 opti.solver('ipopt', options);
 % Create and save diary
 OutFolder = fullfile(pathRepo,'Results',S.ResultsFolder);
@@ -736,7 +730,7 @@ diary(Outname);
 diary off
 % Extract results
 % Create setup
-setup.tolerance.ipopt = tol_ipopt;
+setup.tolerance.ipopt = S.tol_ipopt;
 setup.bounds = bounds;
 setup.scaling = scaling;
 setup.guess = guess;

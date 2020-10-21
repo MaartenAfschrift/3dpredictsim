@@ -12,11 +12,11 @@ S.PolyFolder = 'testRajagopal';
 % Modelpath
 S.ModelPath = fullfile(MainPath,'OpenSimModel','Rajagopal2015.osim'); 
 % Folder with CasadiFunctions
-S.CasadiFunc_Folders = 'DefaultRajagopal'; 
+S.CasadiFunc_Folders = 'testRajagopal'; 
 % path to Cpp file used in the optimization
-S.CppFile_NLP = fullfile(MainPath,'ExternalFunctions','TrackSim_Subject1.cpp'); 
+S.CppFile_NLP = fullfile(MainPath,'ExternalFunctions','CppFiles','ID_Subject1.cpp'); 
  % path to Cpp file for post processing
-S.CppFile_pp = fullfile(MainPath,'ExternalFunctions','TrackSim_Subject1_pp.cpp');    
+S.CppFile_pp = fullfile(MainPath,'ExternalFunctions','CppFiles','Analyse_Subject1_pp.cpp');    
 % Number of input arguments in the cpp file
 S.CppFile_nInput = 93; 
 % model selection options: Rajagopal, Gait92
@@ -40,9 +40,9 @@ VSinstall   = 'C:\Program Files (x86)\Microsoft Visual Studio 14.0';
 Bool_RunMA = 0; % Boolean to select if we have to run the muscle analysis
 FitPolynomials(MainPath,S.ModelName,S.ModelPath,S.PolyFolder,Bool_RunMA)
 
-
 %% 2: Create Casadifunctions
 
+% create casadi functions for equations in optimiztion problem
 CreateCasadiFunctions(MainPath, S.ModelName, S.ModelPath, S.CasadiFunc_Folders,...
     S.PolyFolder,SettingsCasFunc);
 

@@ -217,7 +217,6 @@ end
 pathCasADiFunctions = [pathRepo,'/CasADiFunctions'];
 PathDefaultFunc = fullfile(pathCasADiFunctions,S.CasadiFunc_Folders);
 cd(PathDefaultFunc);
-% f_coll = Function.load('f_coll');
 f_FiberLength_TendonForce_tendon = Function.load('f_FiberLength_TendonForce_tendon');
 f_FiberVelocity_TendonForce_tendon = Function.load('f_FiberVelocity_TendonForce_tendon');
 f_forceEquilibrium_FtildeState_all_tendon = Function.load('f_forceEquilibrium_FtildeState_all_tendon');

@@ -46,7 +46,7 @@ if strcmp(ModelName,'Rajagopal')
     IndexCalf = [13 14 34 13+10 14+40 34+40];
     % indexes of muscles selected for casadifunctions (assuming symmetry
     % on left and right side)    
-    iMuscle_unique = 1:length(muscleNames)*2;
+    iMuscle_unique = 1:length(muscleNames);
 elseif strcmp(ModelName,'Gait92')
     % number of input dofs for polynomials
     nq.leg          = 10;
@@ -68,7 +68,7 @@ elseif strcmp(ModelName,'Gait92')
     IndexCalf = [32 33 34 78 79 80];
     % indexes of muscles selected for casadifunctions (assuming symmetry
     % on left and right side)
-    iMuscle_unique = 1:length(muscleNames(1:end-3))*2;    
+    iMuscle_unique = 1:length(muscleNames(1:end-3));    
 end
 
 %% User input settings
@@ -118,9 +118,10 @@ nq.leg      = 7; % #joints needed for polynomials
 %% Polynomial approximation
 
 % load the polynomial approximations
-load([pathpolynomial,'/muscle_spanning_joint_INFO_',PolyFolder, '.mat'],...
+pathpolynomial = fullfile(MainPath,'Polynomials',PolyFolder);
+load([pathpolynomial,'/muscle_spanning_joint_INFO.mat'],...
     'muscle_spanning_joint_INFO');
-load([pathpolynomial,'/MuscleInfo_',PolyFolder,'.mat'],...
+load([pathpolynomial,'/MuscleInfo.mat'],...
     'MuscleInfo');
 
 % Nuber of muscles with polynomial approx
@@ -415,6 +416,10 @@ vMmax       = SX(NMuscle,1); % Maximum contraction velocities
 massM       = SX(NMuscle,1); % Muscle mass
 Fpass       = SX(NMuscle,1); % Passive element forces
 % Parameters of force-length-velocity curves
+load(fullfile(MainPath,'MuscleModel','Fvparam.mat'),'Fvparam');
+load(fullfile(MainPath,'MuscleModel','Fpparam.mat'),'Fpparam');
+load(fullfile(MainPath,'MuscleModel','Faparam.mat'),'Faparam');
+% Parameters of force-length-velocity curves
 for m = 1:NMuscle
     [Hilldiff(m),FT(m),Fce(m),Fpass(m),Fiso(m),vMmax(m),massM(m)] = ...
         ForceEquilibrium_FtildeState_all_tendon(a(m),FTtilde(m),...
@@ -660,10 +665,6 @@ save(fullfile(OutPath,'MassM.mat'),'MassM');
 
 %% save the muscle-tendon parameters
 save(fullfile(OutPath,'MTparameters.mat'),'MTparameters');
-
-
-
-
 
 
 end

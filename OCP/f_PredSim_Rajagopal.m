@@ -93,9 +93,8 @@ addpath(genpath(pathmusclemodel));
 % Total number of muscles
 NMuscle = length(muscleNames)*2;
 % polynomials to evaluate muscle-tendon length
-pathpolynomial = fullfile(pathRepo,'Polynomials',S.subject);
-addpath(genpath(pathpolynomial));
-tl = load([pathpolynomial,'/muscle_spanning_joint_INFO_',S.subject,'.mat']);
+pathpolynomial = fullfile(pathRepo,'Polynomials',S.PolyFolder); % default location 
+tl = load([pathpolynomial,'/muscle_spanning_joint_INFO.mat']);
 [~,mai] = MomentArmIndices(muscleNames,tl.muscle_spanning_joint_INFO);
 
 % Parameters for activation dynamics
