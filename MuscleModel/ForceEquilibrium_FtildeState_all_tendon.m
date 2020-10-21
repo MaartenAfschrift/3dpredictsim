@@ -61,7 +61,7 @@ e4 = Fvparam(4);
 FMvtilde = e1*log((e2*vMtilde+e3)+sqrt((e2*vMtilde+e3).^2+1))+e4;
 % Active muscle force
 d = 0.01; % damping coefficient
-Fcetilde = a.*FMltilde.*FMvtilde +d*vMtilde;
+Fcetilde = a.*FMltilde.*FMvtilde + d*vMtilde;
 Fce = FMo.*Fcetilde;
 
 % Passive muscle force-length characteristic

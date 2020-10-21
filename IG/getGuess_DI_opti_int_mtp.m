@@ -216,6 +216,14 @@ guess.e_a = 0.1*ones(N,nq.arms);
 guess.a_mtp = 0.1*ones(N,nq.mtp);
 guess.e_mtp = 0.1*ones(N,nq.mtp);
 
+%% Mtp lumbar activations
+% Only used when no muscles actuate the lumbar joints (e.g. Rajagopal
+% model)
+guess.a_lumbar = 0.1*ones(N+1,nq.trunk);
+guess.e_lumbar = 0.1*ones(N,nq.trunk);
+
+
+
 %% Final time
 % The final time is function of the imposed speed
 all_speeds = 0.73:0.1:2.73;
@@ -286,14 +294,16 @@ guess.vA        = (guess.vA)./repmat(scaling.vA,N,size(guess.vA,2));
 guess.dFTtilde  = (guess.dFTtilde)./repmat(scaling.dFTtilde,N,...
     size(guess.dFTtilde,2));
 
+
 %% Collocation points
-    guess.a_col = zeros(d*N,NMuscle);
-    guess.FTtilde_col = zeros(d*N,NMuscle);
-    guess.QsQdots_col = zeros(d*N,2*nq.all);
-    guess.a_a_col = zeros(d*N,nq.arms);
-    guess.a_mtp_col = zeros(d*N,nq.mtp);
-    guess.dFTtilde_col = zeros(d*N,NMuscle);
-    guess.Qdotdots_col = zeros(d*N,nq.all);
+guess.a_col = zeros(d*N,NMuscle);
+guess.FTtilde_col = zeros(d*N,NMuscle);
+guess.QsQdots_col = zeros(d*N,2*nq.all);
+guess.a_a_col = zeros(d*N,nq.arms);
+guess.a_mtp_col = zeros(d*N,nq.mtp);
+guess.dFTtilde_col = zeros(d*N,NMuscle);
+guess.Qdotdots_col = zeros(d*N,nq.all);
+guess.a_lumbar_col = zeros(d*N,nq.trunk);
 for k=1:N
     guess.a_col((k-1)*d+1:k*d,:) = repmat(guess.a(k,:),d,1); 
     guess.FTtilde_col((k-1)*d+1:k*d,:) = repmat(guess.FTtilde(k,:),d,1);

@@ -8,6 +8,9 @@
 function [Indmusi,mai] = ...
     MomentArmIndices(muscleNames,muscle_spanning_joint_INFO)
 
+DOFnames = {'hip flex','Hip add','hip rot','knee flex','ankle flex','subtalar',...
+    'mtp angle','trunk extension','trunk bending','trunk rotation'};
+
 NMuscle = length(muscleNames)*2;
 for i = 1:length(muscleNames)
     % Muscles are ordered as left first and right second
@@ -21,7 +24,10 @@ for i = 1:length(muscleNames)
         if (muscle_spanning_joint_INFO(i,j) == 1)
            mai(j).mus.l(1,i) = Indmusi.(muscleNames{i}(1:end-2)).l;
            mai(j).mus.r(1,i) = Indmusi.(muscleNames{i}(1:end-2)).r;
-        end        
+        end
+        if i ==1
+            mai(j).dof = DOFnames{j};
+        end
     end    
 end
 

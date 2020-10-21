@@ -10,7 +10,7 @@
 clear all; close all; clc;
 import casadi.*
 
-kTendonV = 15:5:40;
+kTendonV = 15:5:40; % increase strength of hip muscles
 nit = length(kTendonV);
 for i = 1:nit
     clearvars -except i kTendonV nit

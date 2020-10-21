@@ -61,7 +61,7 @@ S.savename      = 'Passive_talus';
 S.ExoBool       = 1;
 S.ExoScale      = 0;
 S.DataSet       = 'PoggenSee2020_Exp';
-f_PredSim_PoggenSee2020_CalcnT(S);
+f_PredSim_PoggenSee2020(S);
 
 % Active exoskeleton (with limited implemenation)
 S.ExternalFunc  = 'SimExo_3D_talus_out.dll';        % this one is with the pinjoint mtp

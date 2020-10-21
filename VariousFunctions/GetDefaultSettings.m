@@ -23,7 +23,7 @@ if  ~isfield(S,'NThreads') || isempty(S.NThreads)
 end
 
 if ~isfield(S,'mass') || isempty(S.mass)
-    S.mass = 62;
+    S.mass = 64;
 end
 
 if ~isfield(S,'subject') || isempty(S.subject)
@@ -138,6 +138,77 @@ else
     S.Constr.toes = 0.1; % by default at least 10cm distance between toes
     S.Constr.tibia = 0.11; % by default at least 11cm distance between toes
 end
+
+
+% Settings related to bounds on muscle activations
+if isfield(S,'Bounds')
+    if ~isfield(S.Bounds,'ActLower')
+        S.Bounds.ActLower = 0.05;
+    end
+    if ~isfield(S.Bounds,'ActLowerHip')
+        S.Bounds.ActLowerHip = [];
+    end
+    if ~isfield(S.Bounds,'ActLowerKnee')
+        S.Bounds.ActLowerKnee = [];
+    end
+    if ~isfield(S.Bounds,'ActLowerAnkle')
+        S.Bounds.ActLowerAnkle = [];
+    end
+else
+    S.Bounds.ActLower = 0.05;
+    S.Bounds.ActLowerHip = [];
+    S.Bounds.ActLowerKnee = [];
+    S.Bounds.ActLowerAnkle = [];
+end
+
+% bounds on final time (i.e. imposing stride frequency / stride length)
+if ~isfield(S.Bounds,'tf')
+    S.Bounds.tf = [];
+end
+
+% scaling exoskeleton timing
+if isfield(S,'PercStance')
+    if ~isfield(S.PercStance,'bool')
+        S.PercStance.bool = 0;        
+    end
+    if ~isfield(S.PercStance,'xStanceOr')
+        S.PercStance.xStanceOr = 0.61; % duration stance phase in experiment
+    end
+    if ~isfield(S.PercStance,'xStanceNew')
+        S.PercStance.xStanceNew = 0.58; % duration stance phase in simulation
+    end
+else
+    S.PercStance.bool = 0;
+end
+
+% parallel computation settings
+if ~isfield(S,'parallelMode')
+    S.parallelMode = 'thread';
+end
+
+% symmetric motion ?
+if ~isfield(S,'Symmetric')
+    S.Symmetric = true;
+end
+
+% oeriodic motion
+if ~isfield(S,'Periodic')
+    S.Periodic = false;
+end
+
+% model selection
+if isfield(S,'Model')
+    if ~isfield(S.Model,'Rajagopal')
+        S.Model.Rajagopal = false;
+    end
+    if ~isfield(S.Model,'Default')
+        S.Model.Default = true;
+    end
+else
+    S.Model.Rajagopal = false;
+    S.Model.Default = true;
+end
+
 
 % Print the settings to the screen
 disp(S);

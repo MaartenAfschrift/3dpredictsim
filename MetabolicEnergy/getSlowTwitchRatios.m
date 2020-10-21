@@ -56,7 +56,12 @@ function pctst = getSlowTwitchRatios(muscleNames)
     
     pctst = zeros(length(muscleNames),1);
     for i = 1:length(muscleNames)
-        pctst(i,1) = pctst_data.(muscleNames{i});
+        if isfield(pctst_data,muscleNames{i})
+            pctst(i,1) = pctst_data.(muscleNames{i});
+        else
+            disp(['default ratio of Slow twitch fibers for muscle ' muscleNames{i} ' selected']);
+            pctst(i,1) = 0.5;
+        end
     end
     
 end   

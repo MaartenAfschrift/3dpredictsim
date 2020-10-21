@@ -16,9 +16,12 @@ function [muscle_spanning_joint_INFO,MuscleInfo] = PolynomialFit_mtp(MuscleData)
         end
     end
     
-    muscle_spanning_joint_INFO = squeeze(sum(MuscleData.dM, 1));
+    muscle_spanning_joint_INFO = squeeze(nanmean(MuscleData.dM, 1));
     muscle_spanning_joint_INFO(muscle_spanning_joint_INFO<=0.0001 & muscle_spanning_joint_INFO>=-0.0001) = 0;
     muscle_spanning_joint_INFO(muscle_spanning_joint_INFO~=0) = 1;
+    
+    maxdofs = max(sum(muscle_spanning_joint_INFO,2));
+    disp(['max ndofs for a muscle :' num2str(maxdofs)]);
       
     q_all = MuscleData.q;
     
@@ -46,9 +49,9 @@ function [muscle_spanning_joint_INFO,MuscleInfo] = PolynomialFit_mtp(MuscleData)
         criterion_full_filled = 0;
         order = 3;
         % TODO: workaround to avoid rank defiency when unlocking mtp joint
-        if m_nr==36 || m_nr==37 || m_nr==42 || m_nr==43 % MTP actuator
-            order = 4;
-        end      
+%         if m_nr==36 || m_nr==37 || m_nr==42 || m_nr==43 % MTP actuator
+%             order = 4;
+%         end      
         while criterion_full_filled==0
             [mat,diff_mat_q] = n_art_mat_3(q_all(:,index_dof_crossing), order);
             nr_coeffs = length(mat(1,:));

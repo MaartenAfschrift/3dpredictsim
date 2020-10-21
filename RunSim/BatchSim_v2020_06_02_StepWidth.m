@@ -9,6 +9,7 @@ clear all; close all; clc;
 S.v_tgt     = 1.25;     % average speed
 S.N         = 50;       % number of mesh intervals
 S.NThreads  = 4;        % number of threads for parallel computing
+S.mass      = 64;
 
 % quasi random initial guess, pelvis y position
 S.IG_PelvisY = 0.896;   % subject 1 poggensee

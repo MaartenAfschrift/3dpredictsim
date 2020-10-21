@@ -416,6 +416,18 @@ bounds.e_mtp.upper = ones(1,nq.mtp);
 bounds.a_mtp.lower = -ones(1,nq.mtp);
 bounds.a_mtp.upper = ones(1,nq.mtp);
 
+%% Lumbar activations
+% Only used when no muscles actuate the lumbar joints (e.g. Rajagopal
+% model)
+bounds.a_lumbar.lower = -ones(1,nq.trunk);
+bounds.a_lumbar.upper = ones(1,nq.trunk);
+
+%% Lumbar excitations
+% Only used when no muscles actuate the lumbar joints (e.g. Rajagopal
+% model)
+bounds.e_lumbar.lower = -ones(1,nq.trunk);
+bounds.e_lumbar.upper = ones(1,nq.trunk);
+
 %% Final time
 bounds.tf.lower = 0.1;
 bounds.tf.upper = 1;
@@ -449,6 +461,8 @@ bounds.Qdotdots.upper(isnan(bounds.Qdotdots.upper)) = 0;
 % Arm torque actuators
 % Fixed scaling factor
 scaling.ArmTau = 150;
+% Fixed scaling factor
+scaling.LumbarTau = 150;
 % Mtp torque actuators
 % Fixed scaling factor
 scaling.MtpTau = 100;

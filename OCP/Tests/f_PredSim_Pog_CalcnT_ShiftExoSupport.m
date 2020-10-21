@@ -377,6 +377,17 @@ else
     ExoVect = zeros(2,N);
 end
 
+% adapt timing of exoskeleton torque to "align with natural" timing of gait
+% phases in the simulation
+if Set.PercStance
+    % adapt ExoVect to express exoskeleton assistance as a percentage of
+    % the stance phase instead of stride
+    ExoSpline = 
+end
+
+
+
+
 %% Index helpers
 
 % indexes to select kinematics left and right leg

@@ -5,13 +5,13 @@ clear all; close all; clc;
 
 import casadi.*
 
-OutPath = 'C:\Users\u0088756\Documents\FWO\Software\ExoSim\SimExo_3D\3dpredictsim\CasADiFunctions\EnergyModels';
-if ~isfolder(OutPath);
+OutPath = 'C:\Users\u0088756\Documents\FWO\Software\ExoSim\SimExo_3D\3dpredictsim\CasADiFunctions\EnergyModels_Rajagopal';
+if ~isfolder(OutPath)
     mkdir(OutPath);
 end
 
 %% Casadi variables
-NMuscle         = 92;
+NMuscle         = 80;
 act_SX          = SX.sym('act_SX',NMuscle,1); % Muscle activations
 exc_SX          = SX.sym('exc_SX',NMuscle,1); % Muscle excitations
 lMtilde_SX      = SX.sym('lMtilde_SX',NMuscle,1); % N muscle fiber lengths

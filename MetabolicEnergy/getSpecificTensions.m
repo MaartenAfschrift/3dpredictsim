@@ -55,7 +55,12 @@ function sigma = getSpecificTensions(muscleNames)
     
     sigma = zeros(length(muscleNames),1);
     for i = 1:length(muscleNames)
-        sigma(i,1) = sigma_data.(muscleNames{i});
+        if isfield(sigma_data,muscleNames{i})
+            sigma(i,1) = sigma_data.(muscleNames{i});
+        else
+            disp(['default specific tension for muscle ' muscleNames{i} ' selected']);
+            sigma(i,1) = 0.7;
+        end
     end
     
 end    

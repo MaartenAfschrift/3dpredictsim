@@ -8,7 +8,7 @@
 clear all; close all; clc;
 import casadi.*
 ExtPoly = '_mtp';
-S.CasadiFunc_Folders = 'Casadi_s1Pog_mtp_k35';
+S.CasadiFunc_Folders = 'Casadi_s1Pog_mtp_Default';
 subject              = 's1_Poggensee';
 if isfolder(S.CasadiFunc_Folders)
     error('Never changes the casadi functions in an existing folder, these functions are important to analyse optimization results (from the optimal states and controls');
@@ -20,7 +20,6 @@ dampingArm = 0.1;
 stiffnessMtp = 1.5/(pi/180)/5;
 dampingMtp = 0.5;
 % define general settings for default objective functions
-S.N             = 50;
 % By default, the tendon stiffness is 35 and the shift is 0.
 NMuscle = 92;
 aTendon = 35*ones(NMuscle,1);
@@ -111,9 +110,6 @@ calcOrall.l     = 41:43;
 calcOrall.all   = [calcOrall.r,calcOrall.l];
 NcalcOrall      = length(calcOrall.all);
 
-%% Model info
-body_mass = 62;
-body_weight = body_mass*9.81;
 
 %% Muscle-tendon parameters
 % Muscles from one leg and from the back
@@ -447,33 +443,6 @@ pathIK_walk         = [pathData,'/IK/',nametrial_walk.IK,'.mat'];
 Qs_walk             = getIK(pathIK_walk,joints);
 
 
-% pathBounds = [pathRepo,'/Bounds'];
-% addpath(genpath(pathBounds));
-% [~,scaling] = getBounds_all_mtp(Qs_walk,NMuscle,nq,jointi,1.25);
-
-%% Collocation scheme
-% We use a pseudospectral direct collocation method, i.e. we use Lagrange
-% polynomials to approximate the state derivatives at the collocation
-% points in each mesh interval. We use d=3 collocation points per mesh
-% interval and Radau collocation points.
-pathCollocationScheme = [pathRepo,'/CollocationScheme'];
-addpath(genpath(pathCollocationScheme));
-d = 3; % degree of interpolating polynomial
-method = 'radau'; % collocation method
-[tau_root,C,D,B] = CollocationScheme(d,method);
-
-
-%% Load external functions
-% pathmain = pwd;
-% pathExternalFunctions = [pathRepo,'/ExternalFunctions'];
-% % Loading external functions.
-% cd(pathExternalFunctions);
-% setup.derivatives =  'AD'; % Algorithmic differentiation
-% % F  = external('F',S.ExternalFunc);
-% % F1 = external('F',S.ExternalFunc2);
-% cd(pathmain);
-
-
 %% Index helpers
 
 % indexes to select kinematics left and right leg
@@ -602,7 +571,6 @@ Tau_passj_all = [Tau_passj.hip.flex.l,Tau_passj.hip.flex.r,...
 f_AllPassiveTorques = Function('f_AllPassiveTorques',{Q_SX,Qdot_SX}, ...
     {Tau_passj_all},{'Q_SX','Qdot_SX'},{'Tau_passj_all'});
 
-
 %% save all the casadifunctions
 
 OutPath = fullfile(pwd,S.CasadiFunc_Folders);
@@ -636,6 +604,11 @@ f_T6.save(fullfile(OutPath,'f_T6'));
 f_AllPassiveTorques.save(fullfile(OutPath,'f_AllPassiveTorques'));
 fgetMetabolicEnergySmooth2004all.save(fullfile(OutPath,'fgetMetabolicEnergySmooth2004all'));
 
+%% Function to compute muscle mass
+[MassM] = GetMuscleMass(muscleNames,MTparameters_m);
+save(fullfile(OutPath,'MassM.mat'),'MassM');
+
+%% save default setup structure
 % save default setup structure to verify this in the main function part
 SDefault = S;
 save('SDefault.mat','SDefault');

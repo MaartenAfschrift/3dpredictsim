@@ -6,3 +6,5 @@
 !/Results/PredSim_all/TrackSim/Results_tracking.mat
 **/Polynomials/MuscleAnalysis/ResultsMA/
 **/OpenSimModel/subject1/Geometry/
+**OpenSimModel/temp/
+**OpenSimModel/Rajagopal2015/MuscleAnalysis2/

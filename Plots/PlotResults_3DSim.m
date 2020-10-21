@@ -232,9 +232,13 @@ if exist(ResultsFile,'file')
     
     % Plot COT as a function of exo assitance
     subplot(2,2,1); hold on;
-    plot(xParam,R.COT,'o','Color',Cs,'MarkerFaceColor',Cs);
+    plot(xParam,R.COT,'o','Color',Cs,'MarkerFaceColor',Cs,'DisplayName',LegName);
     ylabel('COT');  xlabel(xParamLab);
     title('Cost of Transport');
+    if boolFirst
+        lh=legend('-DynamicLegend','location','east');
+        lh.Interpreter = 'none';
+     end
     
     % Plot stride frequency
     subplot(2,2,2); hold on;
@@ -252,7 +256,6 @@ if exist(ResultsFile,'file')
     plot(R.T_exo(:,2),'-','Color',Cs);
     ylabel('Exo Moment [Nm]');  xlabel('% stride');
     title('Right');
-    
     
     %% Plot Torque information
     % update this here
@@ -307,19 +310,7 @@ if exist(ResultsFile,'file')
     if boolFirst
         lh=legend('-DynamicLegend','location','east');
         lh.Interpreter = 'none';
-%         lhPos = lh.Position;
-%         lhPos(1) = lhPos(1)+0.2;
-%         set(lh,'position',lhPos);
     end
-    
-%     ax =[];
-%     ax2 = [];
-%     for i=1:3
-%         ax(i) = subplot(3,2,i*2-1);
-%         ax2(i) = subplot(3,2,i*2);
-%     end
-    %     linkaxes(ax,'x');
-    %     linkaxes(ax2,'x');
     
     %% Plot ankle muscle energetics
     axes('parent', tab5);
@@ -363,26 +354,26 @@ if exist(ResultsFile,'file')
     xlabel('% stride'); ylabel('Norm muscle force');
     
     subplot(5,2,10)
-    plot(R.FT(:,iGas),'-','Color',Cs); hold on;
+    plot(R.FT(:,iGas),'-','Color',Cs,'DisplayName',LegName); hold on;
     xlabel('% stride'); ylabel('Norm muscle force');
     
-    ax =[];
-    ax2 = [];
-    for i=1:5
-        ax(i) = subplot(5,2,i*2-1);
-        ax2(i) = subplot(5,2,i*2);
+    if boolFirst
+        lh=legend('-DynamicLegend','location','east');
+        lh.Interpreter = 'none';
     end
-    %     linkaxes(ax,'x');
-    %     linkaxes(ax2,'x');
-    %
     
     %% Ground reaction force
     axes('parent', tab6);
     for i=1:6
         subplot(2,3,i);
-        plot(R.GRFs(:,i),'-','Color',Cs); hold on;
+        l = plot(R.GRFs(:,i),'-','Color',Cs); hold on;
         title(R.colheaders.GRF{i});
         xlabel('% stride');
+    end
+    l.DisplayName = LegName;
+     if boolFirst
+        lh=legend('-DynamicLegend','location','east');
+        lh.Interpreter = 'none';
     end
     
     %% Objective function
@@ -392,9 +383,14 @@ if exist(ResultsFile,'file')
         nf = length(Fields);
         for i= 1:nf
             subplot(3,4,i)
-            plot(xParam,R.Obj.(Fields{i}),'o','Color',Cs,'MarkerFaceColor',Cs); hold on;
+            l = plot(xParam,R.Obj.(Fields{i}),'o','Color',Cs,'MarkerFaceColor',Cs); hold on;
             xlabel(xParamLab);
             title(Fields{i});
+        end
+        l.DisplayName = LegName;
+        if boolFirst
+            lh=legend('-DynamicLegend','location','east');
+            lh.Interpreter = 'none';
         end
     end
     
@@ -405,7 +401,15 @@ if exist(ResultsFile,'file')
     iGas = find(strcmp(R.colheaders.muscles,'lat_gas_r'));
     iGas2 = find(strcmp(R.colheaders.muscles,'med_gas_r'));
     iTib = find(strcmp(R.colheaders.muscles,'tib_ant_r'));
-    
+    if isempty(iGas)
+        iGas = find(strcmp(R.colheaders.muscles,'gaslat_r'));
+    end
+    if isempty(iGas2)
+        iGas2 = find(strcmp(R.colheaders.muscles,'gasmed_r'));
+    end
+    if isempty(iTib)
+        iTib = find(strcmp(R.colheaders.muscles,'tibant_r'));
+    end
     mVect = {'Soleus','Gas-lat','Gas-med','Tib-ant'};
     
     iM = [iSol iGas iGas2 iTib];
@@ -442,8 +446,13 @@ if exist(ResultsFile,'file')
     ylabel('subtalar moment [Nm]'); xlabel('% stride');
     
     subplot(5,4,20)
-    plot(R.Tid(:,strcmp(R.colheaders.joints,'mtp_angle_r')),'-','Color',Cs); hold on;
+    l = plot(R.Tid(:,strcmp(R.colheaders.joints,'mtp_angle_r')),'-','Color',Cs); hold on;
     ylabel('mtp moment [Nm]'); xlabel('% stride');
+    l.DisplayName = LegName;
+    if boolFirst
+        lh=legend('-DynamicLegend','location','east');
+        lh.Interpreter = 'none';
+    end
     
     %% Spatiotemporal results
     
@@ -453,9 +462,11 @@ if exist(ResultsFile,'file')
     plot(xParam,R.StrideLength,'o','Color',Cs,'MarkerFaceColor',Cs); hold on;
     ylabel('Stride length [m]');  xlabel(xParamLab);
     
-    subplot(2,3,2);
-    plot(xParam,R.StepWidth_COP,'o','Color',Cs,'MarkerFaceColor',Cs); hold on;
-    ylabel('Stride width [m]');  xlabel(xParamLab);
+    if isfield(R,'StepWidth_COP')
+        subplot(2,3,2);
+        plot(xParam,R.StepWidth_COP,'o','Color',Cs,'MarkerFaceColor',Cs); hold on;
+        ylabel('Stride width [m]');  xlabel(xParamLab);
+    end
     
     subplot(2,3,3);
     plot(xParam,1./(R.tf_step*2),'o','Color',Cs,'MarkerFaceColor',Cs); hold on;
@@ -470,11 +481,13 @@ if exist(ResultsFile,'file')
     ylabel('% swing');  xlabel(xParamLab);
     
     subplot(2,3,6);
-    plot(xParam,R.Event.DS,'o','Color',Cs,'MarkerFaceColor',Cs); hold on;
+    l = plot(xParam,R.Event.DS,'o','Color',Cs,'MarkerFaceColor',Cs); hold on;
     ylabel('% double support');  xlabel(xParamLab);
-    
-        
-    
+    l.DisplayName = LegName;
+    if boolFirst
+        lh=legend('-DynamicLegend','location','east');
+        lh.Interpreter = 'none';
+    end
 else
     warning(['File not found: ' ResultsFile]);
 end
