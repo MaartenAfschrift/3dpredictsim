@@ -7,8 +7,8 @@ clear all; close all; clc;
 
 % settings for optimization
 S.v_tgt     = 1.25;     % average speed
-S.N         = 25;       % number of mesh intervals
-S.NThreads  = 4;        % number of threads for parallel computing
+S.N         = 50;       % number of mesh intervals
+S.NThreads  = 8;        % number of threads for parallel computing
 
 % quasi random initial guess, pelvis y position
 S.IG_PelvisY = 0.896;   % subject 1 poggensee
@@ -57,5 +57,12 @@ f_PredSim_Rajagopal(S);     % run the optimization
 f_LoadSim_Rajagopal(S.ResultsFolder,S.savename);
 
 
-
-
+%% test multiple simulations with different weight on lumbar actuation
+wLumbar = [1 10 10^2 10^3 10^4 10^5 10^6];
+for i=1:length(wLumbar)    
+    S.ResultsFolder = 'Example_Rajagopal2015_Poly';
+    S.savename      = ['NoExo_w' num2str(wLumbar(i))];
+    S.W.Lumbar      = wLumbar(i);
+    f_PredSim_PoggenSee2020_Rajagopal(S);     % run the optimization
+%     f_LoadSim_PoggenSee2020_Rajagopal(S.ResultsFolder,S.savename);    
+end
