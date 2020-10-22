@@ -259,27 +259,16 @@ musi = 1:40;
 NMuscle = length(muscleNames)*2;
 
 % Muscle indices for later use
+PathDefaultFunc = fullfile(pathCasADiFunctions,S.CasadiFunc_Folders);
 File_MTparameters = fullfile(PathDefaultFunc,'MTparameters.mat');
-if exist(File_MTparamters,'file')
+if exist(File_MTparameters,'file')
    load(File_MTparameters,'MTparameters');
 else
     % This file was saved in another location in the old implementation
     pathmusclemodel = fullfile(pathRepo,'MuscleModel',subject);
-    ExtPoly = '_mtp';
-    load([pathmusclemodel,'/MTparameters_',subject, ExtPoly, '.mat'],'MTparameters');
+    load([pathmusclemodel,'/MTparameters_',subject, '.mat'],'MTparameters');
 end
 MTparameters_m = [MTparameters(:,musi),MTparameters(:,musi)];
-
-% path to the polynomial functions
-if isfield(S,'PolyFolder') && ~isempty(S.PolyFolder)
-    % default location 
-    pathpolynomial = fullfile(pathRepo,'Polynomials',S.PolyFolder);
-else
-    % old version (we still want to be able to process these results)
-    pathpolynomial = fullfile(pathRepo,'Polynomials',S.subject);
-end
-tl = load([pathpolynomial,'/muscle_spanning_joint_INFO_',subject,'_mtp.mat']);
-
 
 % Parameters for activation dynamics
 tact = 0.015; % Activation time constant

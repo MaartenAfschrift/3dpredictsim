@@ -143,7 +143,7 @@ MassFile = fullfile(PathDefaultFunc,'MassM.mat');
 if exist(MassFile,'file')
     MuscleMass = load(MassFile);
 else
-    MassFile = fullfile(pathCasADiFunctions,'MassM.mat');
+    MassFile = fullfile(pathCasADiFunctions,'MassM.mat'); % default muscle mass
     MuscleMass =load(MassFile);
 end
 
