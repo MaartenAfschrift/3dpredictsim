@@ -1,272 +1,197 @@
-3dpredictsim
+Predictive simulations human movement
 ============
 
-This repository contains code and data to generate three-dimensional muscle-driven predictive simulations of human gait as described in: Falisse A, Serrancoli G, Dembia C, Gillis J, Jonkers J, De Groote F. 2019 Rapid predictive simulations with complex musculoskeletal models suggest that diverse healthy and pathological human gaits can emerge from similar control strategies. Journal of the Royal Society Interface 16: 20190402. http://dx.doi.org/10.1098/rsif.2019.0402
+This repository is a fork of the code and data to generate three-dimensional muscle-driven predictive simulations of human gait as described in: Falisse A, Serrancoli G, Dembia C, Gillis J, Jonkers J, De Groote F. 2019 Rapid predictive simulations with complex musculoskeletal models suggest that diverse healthy and pathological human gaits can emerge from similar control strategies. Journal of the Royal Society Interface 16: 20190402. http://dx.doi.org/10.1098/rsif.2019.0402. 
 
-Thanks for citing our work in any derived publication. Feel free to reach us for any questions: antoine.falisse@kuleuven.be | antoinefalisse@gmail.com | friedl.degroote@kuleuven.be. This code has been developed on Windows using MATLAB2017b. There is no guarantee that it runs smooth on other platforms. Please let us know if you run into troubles.
+In this repository the original code of Falisse et al. was adapted to:
 
-3dpredictsim contains different folders with data and code needed to reproduce all results and figures from the study. The best way to get started is to run OCP/PredSim_all.m and to explore the code from there (make sure you install CasADi beforehand: [see CasADi website](https://web.casadi.org/))
+- Simulate walking with external support of an exoskeleton
+- Simulate model with mtp joint
+- Simulate Rajagopal model
+- Make input-output a bit easier (in my opinion)
 
-Here, we provide a brief description of the different scripts and folders. 
- 
-### OCP (Optimal Control Problems)
+Besides that, the code was also adapted in accordance with recent (October 2020) adjustments in the original repository of Falisse et al.
 
-Folder with scripts performing the predictive and tracking simulations.
+- Adjusted version of the collocation scheme (now really being an orthogonal radau scheme).
+- support for parallel computing
+- formulation with opti
 
-1. PredSim_all.m
-    - Script that formulates the predictive simulations (except those with the prosthesis).
-2. PredSim_prosthesis.m
-    - Script that formulates the predictive simulations with the prosthesis.
-3. TrackSim.m
-    - Script that formulates the tracking simulation.
-  
-### MuscleModel
+### Create all input for the simulations
 
-Folder with scripts and data describing muscle activation dynamics, muscle contraction dynamics, and arm activation dynamics. This folder also contains helper functions for use when formulating the optimal control problems.
+When using a new/adapted musclulosketal model, you have to execute three steps to create the surrogate models and equations needed for optimization. An example of these steps are shown in the matlab script **./ConvertOsimModel/Example_PrepareOptimimzation.m** 
 
-1. Scripts:
+A summary of the steps:
 
-    1. ArmActivationDynamics.m
-        - Function that describes the dynamics of the arms.        
-    2. computeExcitationRaasch.m
-        - Function that computes muscle excitations from time derivative of muscle activations.        
-    3. FiberLength_TendonForce_tendon.m
-        - Function that computes fiber lengths from muscle-tendon forces.        
-    4. FiberVelocity_TendonForce_tendon.m
-        - Function that computes fiber velocities from muscle-tendon forces.        
-    5. ForceEquilibrium_FtildeState_all.m
-        - Function that derives the Hill-equilibrium.        
-    6. ForceEquilibrium_FtildeState_all_tendon.m
-        - Function that derives the Hill-equilibrium with tendon stiffness as parameter.        
-    7. MomentArmIndices.m        
-        - Helper function that returns indices for use with the moment arms.        
-    8. MuscleIndices.m
-        - Helper function that returns indices for use with the muscles. 
-        
-2. Data:
-    1. Faparam.mat
-        - Parameters of the muscle active force-length relationship.
-    2. Fpparam.mat
-        - Parameters of the muscle passive force-length relationship.
-    3. Fvparam.mat
-        - Parameters of the muscle force-velocity relationship.
-    4. MTparameters_subject1.mat
-        - Muscle-tendon parameters: 
-            1. Row 1: maximal isometric forces
-            2. Row 2: optimal fiber lengths
-            3. Row 3: tendon slack lengths
-            4. Row 4: optimal pennation angles
-            5. Row 5: maximal contraction velocities
+#### 1. Polynomial fitting
 
-### Polynomials
+The funciton FitPolynomials create a surrogate model, based on polynomial functions, to compute muscle-tendon lengths and moment arms from the joint kinematics. 
 
-Folder with scripts and data describing muscle-tendon lengths, velocities, and moment arms using polynomial expressions of joint positions and velocities.
+- First, we create a sample of joint angles (i.e. dummy motion) and run muscle analysis on this dummy motion to create a training dataset. Note that running the muscle analysis takes about 20 minutes. 
+- Second, we fit the polynomials functions and save it in a spefici folder (input argument PolyFolder). You'll have to point to this folder using the settings *S.PolyFolder* when running the optimization
 
-1. Scripts:
-    1. Main_polynomials_subject1.m
-        - Script that sets the process of calibrating the polynomial coefficients.
-    2. PolynomialFit.m
-        - Function that calibrates the polynomial coefficients.
-    3. n_art_mat_3.m and n_art_mat_3_cas_SX.m
-        - Functions that provide the polynomials based on the number of degrees of freedom and the polynomial order.
-        - n_art_mat_3_cas_SX.m is derived from n_art_mat_3.m and adjusted for use with CasADi.
-2. Data:
-    1. muscle_spanning_joint_INFO_subject1.mat
-        - Helper matrix indicating which muscle actuates which degree of freedom.
-    2. MuscleInfo_subject1.mat
-        - Structure with polynomial coefficients.
-        
-### MetabolicEnergy
+#### 2. Create casadi functions
 
-Folder with scripts describing the metabolic energy models.
+In the next step we read the muscle-tendon parameters from the model, combine it with the polynomial functions and create a casadi function for most of the equations used in the optimization. This includes:
 
-1. getMetabolicEnergySmooth2003all.m
-    - Function that describes the metabolic energy model from Umberger et al. (2003).
-2. getMetabolicEnergySmooth2004all.m
-    - Function that describes the metabolic energy model from Bhargava et al. (2004).
-3. getMetabolicEnergySmooth2010all.m
-    - Function that describes the metabolic energy model from Umberger (2010).
-4. getMetabolicEnergySmooth2016all.m
-    - Function that describes the metabolic energy model from Uchida et al. (2016).
-5. getMetabolicEnergySmooth2010all_hl.m
-    - Function that describes the metabolic energy model from Umberger (2010) treating muscle lengthening heat rate as Umberger et al. (2003).
-6. getMetabolicEnergySmooth2010all_neg.m
-    - Function that describes the metabolic energy model from Umberger (2010) treating negative mechanical work as Umberger et al. (2003).
-7. getPctSTSmooth.m
-    - Function that describes the orderly recruitment model.
-8. getSlowTwitchRatios.m
-    - Helper function that returns the percentage of slow twitch fibers in the muscles.
-9. getSpecificTensions.m
-    - Helper function that returns the specific tension of the muscles.
-    
-### PassiveMoments
+- Equations for metabolic energy
+- Equations for muscle dynamics
+- Equations for activation dynamaics
+- Casadi version of the polynomial functions
+- ....
 
-Folder with the script describing the passive joint torques.
+These functions are saved in a specific folder (input argument CasadiFunc_Folders). You'll have to point to this folder using the settings *S.CasadiFunc_Folders* when running the optimization
 
-1. PassiveMomentsData.m
-    - Script that describes the passive joint torques.
-    
-### CasADiFunctions
+#### 3. Automatically create .dll files
 
-Folder with scripts implementing several CasADi-based functions.
+You have to provide a .cpp file that solves inverse dynamics with the current model you are using. Note that creating this .cpp file (with the correct modelling parameters) is still a manual step. The conversion from .cpp to .dll is automized in the function CreateDllFileFromCpp, which you can download here https://github.com/MaartenAfschrift/CreateDll_PredSim
 
-1. CasADiFunctions_all.m
-    - Script for use in PredSim_all.m.
-2. CasADiFunctions_prosthesis.m
-    - Script for use in PredSim_prosthesis.m.
-3. CasADiFunctions_tracking.m
-    - Script for use in TrackSim.m.
- 
-### Contact
+#### 4. Run your simulation
 
-Folder with the script describing the foot-ground contact model (for use in tracking simulation).
+You can now run your tracking or predictive simulations when pointing to the correct:
 
-1. HCContactModel.m
-    - Function that describes the Hunt-Crossley foot-ground contact model.
-  
-### CollocationScheme
+- Folder with polynomial functions: **S.PolyFolder**
+- Casadi functions:  **S.CasadiFunc_Folders**
+- .dll files including the file used:
+  - the optimization: **S.ExternalFunction**
+  - the post processing: **S.ExternalFunction2**
 
-Folder with the script describing the collocation scheme.
 
-1. CollocationScheme.m
-    - Script that describes the collocation scheme.
-  
-### Bounds
 
-Folder with the scripts setting the bounds of the optimal control problems.
+### Run Tracking and predictive simulations
 
-1. getBounds_all.m
-    - Script for use in PredSim_all.m.
-2. getBounds_prosthesis.m
-    - Script for use in PredSim_prosthesis.m.
-3. getBounds_tracking.m
-    - Script for use in TrackSim.m.
-  
-### IG (Initial Guesses)
+You can run the tracking and predictive simulations using the functions in the folder **OCP**. This includes
 
-Folder with the scripts setting the initial guesses of the optimal control problems.
+**Gait 92 model**:  (https://simtk-confluence.stanford.edu/display/OpenSim/Gait+2392+and+2354+Models)
 
-1. getGuess_QR.m
-    - Script that describes the quasi-random initial guess.
-2. getGuess_QR_prosthesis.m
-    - Script that describes the quasi-random initial guess for the prosthesis case.
-3. getGuess_DI.m
-    - Script that describes the data-informed initial guess.
-4. getGuess_DI_prosthesis.m
-    - Script that describes the data-informed initial guess for the prosthesis case.
-5. getGuess_DI_t.m
-    - Script that describes the data-informed initial guess with the final time based on provided data.
-6. getGuess_DI_tracking.m
-    - Script that describes the data-informed initial guess for the tracking simulation.
- 
-### Plots
+- f_PredSim_Gait92.m solves the predictive simulations with the gait 92 model
+- f_TrackSim_Gait92.m solves the tracking simulations with the gait 92 model [not finished yet]
+- f_LoadSim_Gait92.m post processing/analysis from the simulated states and controls (both tracking and predictive simulations). 
 
-Folder with scripts plotting initial guesses versus bounds.
+**Rajagopal model**:  (https://simtk.org/projects/full_body)
 
-1. plot_BoundsVSInitialGuess_all.m
-    - Script for use in PredSim_all.m.
-2. plot_BoundsVSInitialGuess_prosthesis.m
-    - Script for use in PredSim_prosthesis.m.
-3. plot_BoundsVSInitialGuess_tracking.m
-    - Script for use in TrackSim.m.
-  
-### VariousFunctions
+- f_PredSim_Rajagopal.m sovles the predictive simulations with the gait 92 model
+- f_TrackSim_Rajagopal.m solves the tracking simulations with the Rajagopal model
+- f_LoadSim_Rajagopal.m post processing/analysis from the simulated states and controls (both tracking and predictive simulations). 
 
-Folder with scripts with various purposes.
+This functions requires a matlabstructure (here S) with the settings for the optimization as input. The default settings for the optimization are added to this settings structure using the function *GetDefaultSettings(S)*. You can find an overview of the settings below.
 
-1. barwitherr.m
-    - Function that generates bar plots with error bars.
-2. getGRF.m
-    - Function that extracts ground reaction forces.
-3. getID.m
-    - Function that extracts inverse dynamics results.
-4. getIK.m
-    - Function that extracts inverse kinematics results.
-5. readDiary.m
-    - Function that reads diaries from IPOPT.
-6. write_motionFile.m
-    - Function that writes motion files for OpenSim.
-7. SplineEval_ppuval.m
-    - Script that evaluates splines.
-   
-### ResultsAnalysis
+Typically you well run the optimization with a specific setup structure and then analyse the simulation results. As an example:
 
-Folder with scripts reproducing all figures of the study.
+```matlab
+% settings....
+S.ResultsFolder = 'NameFolderSimResults';
+S.savename      = 'Resuls_DefaultGait92';
 
-1. Fig1
-    - Script that reproduces Fig 1.
-2. Fig2
-    - Script that reproduces Fig 2.
-3. Fig3A
-    - Script that reproduces Fig 3A.
-4. Fig3B
-    - Script that reproduces Fig 3B.
-5. Fig4
-    - Script that reproduces Fig 4.
-6. FigS1
-    - Script that reproduces Fig S1.
-7. FigS2
-    - Script that reproduces Fig S2.
-8. FigS3
-    - Script that reproduces Fig S3.
-9. FigS4
-    - Script that reproduces Fig S4.
-10. FigS5
-    - Script that reproduces Fig S5.
-11. FigS6
-    - Script that reproduces Fig S6.
-12. getCPU_all.m
-    - Script that extracts the CPU times from the simulation results.
-13. observeResults_PredSim.m
-    - Scripts that plot results not presented in the paper.
-14. predSim_data_all.m
-    - Script that loads the simulation results.
-15. predSim_settings_all.m
-    - Script that loads the settings of the optimal control problems.
-   
-### OpenSimModel\subject1
+% her also other required settings
 
-Folder with data from subject1.
-    
-1. GRF
-    - GRF_gait_1.mat
-        - Ground reaction forces (for use in tracking simulation). 
-2. ID
-    - ID_gait_1.mat
-        - Joint torques (for use in tracking simulation).
-3. IK
-    1. IK_average_running_HGC.mat
-        - Joint positions from running, averaged across experimental trials, for half a gait cycle.
-        - For use with data-informed (running) initial guess.
-    2. IK_average_walking_FGC.mat
-        - Joint positions from walking, averaged across experimental trials, for a full a gait cycle.
-        - For use with data-informed (walking) initial guess: prosthesis case.
-    3. IK_average_walking_HGC.mat
-        - Joint positions from walking, averaged across experimental trials, for half a gait cycle.
-        - For use with data-informed (walking) initial guess.
-    4. IK_gait_1.mat
-        - Joint positions (for use in tracking simulation).
-4. subject1.osim
-    - OpenSim model used in this study.
- 
-### ExperimentalData
+% Run simulation
+f_PredSim_Gait92(S);     % run the optimization
+f_LoadSim_Gait92(S.ResultsFolder,S.savename) % post-process simulation results
+```
 
-Folder with experimental data.
 
-1. ExperimentalData.mat
-    - Structure with experimental data: more information in the readme of that folder. 
-        
-### Results
 
-Folder with simulation results.
+### Plot output
 
-1. PredSim_all/Results_all.mat
-    - Structure with all results from the predictive simulations except those with the prosthesis.
-2. PredSim_prosthesis/Results_prosthesis.mat
-    - Structure with results from the predictive simulations with the prosthesis.
-3. TrackSim/Results_tracking.mat
-    - Structure with results from the tracking simulations.
-        
-### ExternalFunctions
+You can use the function PlotResults_3DSim the create a default figure with a summary of the results. You can easily add multiple simulations to this figure. For example
 
-Folder with external functions, more information in the readme of that folder. 
+
+
+```matlab
+
+%.....
+% simulation walking 1.25 m/s
+S.v_tgt = 1.25;
+S.savename = 'WalkingNormal'
+f_PredSim_Gait92(S);     % run the optimization
+f_LoadSim_Gait92(S.ResultsFolder,S.savename) % post-process simulation results (saves results as S.savename with the extension _pp)
+
+% simulate walking 0.5 m/s
+S.v_tgt = 0.5;
+S.savename = 'WalkingSlow'
+f_PredSim_Gait92(S);     % run the optimization
+f_LoadSim_Gait92(S.ResultsFolder,S.savename) % post-process simulation results (saves results as S.savename with the extension _pp)
+
+% plot figure to compare results (with the three optional input arguments here)
+h = figure(); 	% new figure with handle
+PlotResults_3DSim(fullfile(S.ResultsFolder,'WalkingNormal_pp.mat'),[1 0 0],'Normal',h,1.25,'speed'); 	% plot results of normal walking
+PlotResults_3DSim(fullfile(S.ResultsFolder,'WalkingSlow_pp.mat'),[0 0 1],'Slow',h,0.5,'speed'); 	% plot results of slow walking on same figure
+
+```
+
+
+
+#### Settings- Required
+
+- **PolyFolder**: Folder with the surrogate model for the muscle-tendon length and moment arms (from step 1 of the section "Create all input for the simulations"). This path to the folder is relative to the folder (./Polynomials) [string]
+- **CasadiFunc_Folders**: Name of the folder with the casadifunctions (exported in step 2 of the section "Create all input for the simulations"). This path to the folder is relative to the folder (./CasadiFunctions) [string]
+- **v_tgt**: imposed walking speed [double]
+- **ModelName**: select type of musculoskeletal model. Currently the two options are (1) Gait92 or (2) Rajagopal [string] 
+- **Mass**: mass of the subject in kg [double]
+- **ExternalFunc:** Name of the .dll file used in the optimization (used for solving inverse dynamics). This file should be in the folder *./ExternalFunctions*. See step three of the section "Create all input for the simulations". [string].
+- **ExternalFunc2:** Name of the .dll file used for post processing. This file should be in the folder *./ExternalFunctions*. See step three of the section "Create all input for the simulations" [string]
+- **ResultsFolder**: folder the save the results [string]
+- **Savename**: the of the results file [string]
+
+
+
+#### Settings - optional
+
+**Simulated motion**
+
+- **Symmetric**: simulate symmetric motion (i.e. half a gait cycle), default is true [boolean]
+- **Periodic**: simulate a periodic motion (i.e. full gait cycle), default is false [boolean]
+
+**Settings formulation and solving NLP**
+
+- **N**: number of mesh intervals (default is 50) [double]
+- **NThreads**: number of threads for parallel computing (default is 2) [double]
+- **linear_solver**: default is mumps [string]
+- **tol_ipopt:** tolerance of ipopt solver
+- **parallelMode**: default is thread
+
+**Weights **
+
+- **W.E**: weight metabolic energy rate (default is 500)
+- **W.Ak**: weight joint accelerations (default is 50000)
+- **W.ArmE**: weight arm excitations (default is 10^6)
+- **W.passMom**: weight passive torques (default is 1000)
+- **W.A**: weight muscle activations (default is 2000)
+- **W.exp_E**: power metabolic energy (default is 2)
+- **W.Mtp**: weight mtp excitations (default is 10^6)
+- **W.u**: weight on excitations arms actuators (default is 0.001)
+- **W.Lumbar: ** weight on miniizing lumbar activations (in Rajagopal model) (default is 10^5)
+
+**Initial guess** (Note: I should improve this in the future)
+
+- **IGmodeID**: initial guess based on (1)walking motion, (2) running motion, (3) previous solution in the *Results* folder, (4) previous solution in the *./IG/data folder* default is (1)
+
+- **IGsel**: (1) quasi random initial guess (2) data-based initial guess (default is 2)
+
+- **IKfile_guess**: relative path to IK file used for initial guess (used when IGsel = 2 and IGmodeID is 1 or 2). Default is *OpenSimModel\IK_Guess_Default.mat*
+
+- **savename_ig**: name of the IK file used for initial guess (used when IGmodelID is 4). This file should be in *./IG/data folder*. [string]
+
+- **ResultsF_ig:** name of Folder with IK file for setting *savename_ig* (see above) when IGmodelID is 3 [string].
+
+- **IG_PelvisY**: height of the pelvis in the quasi-random initial guess (in m) [double]
+
+**Adapting bounds**
+
+- **IKfile_Bounds**: relative path to IK file used to determine bounds (i.e. 3 times ROM in IK file for all DOFs). Default is *OpenSimModel\IK_Guess_Default.mat*
+- **Bounds.ActLower**: lower bound on all muscle activations
+- **Bounds.ActLowerHip**: lower bound on activation of the hip muscles
+- **Bounds.ActLowerKnee**: lower bound on activation of the knee muscles
+- **S.Bounds.ActLowerAnkle**: lower bound on activation of the ankle muscles
+
+**Kinematic constraints**
+
+- **Constr.calcn:** minimal distance between calcneneus (origin) in the transversal plane. default is 0.09m [double]
+- **Constr.toes:** minimal distance between toes (origin) in the transversal plane. default is 0.09m [double]
+- **Constr.tibia:** minimal distance between tibia(?s) (origin) in the transversal plane. default is 0.09m [double]
+
+**Exoskeleton control **
+
+- **DataSet**: name of the folder with exoskeleton assistance profile (saved in the folder *./Data*) with a .mat file named *torque_profile.mat*. This mat file should contain the variables *time* and *torque* with the torque profile for one full stride.
+- **ExoBool:** Boolean to select if you want to include the torque profile (i.e. use exoskeleton)
+- **ExoScale:** scale factor for the torque profile.

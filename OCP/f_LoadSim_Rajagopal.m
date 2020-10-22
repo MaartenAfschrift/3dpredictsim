@@ -198,60 +198,7 @@ end
 
 
 %% Model info
-body_weight = S.mass*9.81;
-
-%% Collocation scheme
-% We use a pseudospectral direct collocation method, i.e. we use Lagrange
-% polynomials to approximate the state derivatives at the collocation
-% points in each mesh interval. We use d=3 collocation points per mesh
-% interval and Radau collocation points.
-pathCollocationScheme = [pathRepo,'/CollocationScheme'];
-addpath(genpath(pathCollocationScheme));
-d = 3; % degree of interpolating polynomial
-method = 'radau'; % collocation method
-[tau_root,C,D,B] = CollocationScheme(d,method);
-
-%% Muscle-tendon parameters
-% Muscles from one leg and from the back
-muscleNames = {'addbrev_r','addlong_r','addmagDist_r','addmagIsch_r','addmagMid_r','addmagProx_r',...
-    'bflh_r','bfsh_r','edl_r','ehl_r','fdl_r','fhl_r','gaslat_r','gasmed_r','glmax1_r','glmax2_r',...
-    'glmax3_r','glmed1_r','glmed2_r','glmed3_r','glmin1_r','glmin2_r','glmin3_r','grac_r','iliacus_r',...
-    'perbrev_r','perlong_r','piri_r','psoas_r','recfem_r','sart_r','semimem_r','semiten_r','soleus_r',...
-    'tfl_r','tibant_r','tibpost_r','vasint_r','vaslat_r','vasmed_r'};
-
-% Muscle indices for later use
-pathmusclemodel = [pathRepo,'/MuscleModel/',subject];
-musi = 1:40;
-NMuscle = length(muscleNames)*2;
-ExtPoly = '';
-load([pathmusclemodel,'/MTparameters_',subject, ExtPoly, '.mat']);
-MTparameters_m = [MTparameters(:,musi),MTparameters(:,musi)];
-
-% Muscle-tendon parameters. Row 1: maximal isometric forces; Row 2: optimal
-% fiber lengths; Row 3: tendon slack lengths; Row 4: optimal pennation
-% angles; Row 5: maximal contraction velocities
-pathpolynomial = fullfile(pathRepo,'Polynomials',S.subject);
-addpath(genpath(pathpolynomial));
-tl = load([pathpolynomial,'/muscle_spanning_joint_INFO_',subject,ExtPoly, '.mat']);
-[~,mai] = MomentArmIndices(muscleNames(1:end-3),...
-    tl.muscle_spanning_joint_INFO(1:end-3,:));
-
-% Parameters for activation dynamics
-tact = 0.015; % Activation time constant
-tdeact = 0.06; % Deactivation time constant
-
-%% Metabolic energy model parameters
-% We extract the specific tensions and slow twitch rations.
-pathMetabolicEnergy = [pathRepo,'/MetabolicEnergy'];
-addpath(genpath(pathMetabolicEnergy));
-% (1:end-3), since we do not want to count twice the back muscles
-tension = getSpecificTensions(muscleNames);
-tensions = [tension;tension];
-% (1:end-3), since we do not want to count twice the back muscles
-pctst = getSlowTwitchRatios(muscleNames);
-pctsts = [pctst;pctst];
-
-%% CasADi functions
+body_weight = S.mass*9.81;%% CasADi functions
 pathCasADiFunctions = [pathRepo,'/CasADiFunctions'];
 PathDefaultFunc = fullfile(pathCasADiFunctions,S.CasadiFunc_Folders);
 f_FiberLength_TendonForce_tendon = Function.load(fullfile(PathDefaultFunc,'f_FiberLength_TendonForce_tendon'));
@@ -286,6 +233,58 @@ fgetMetabolicEnergySmooth2010all_hl = Function.load('fgetMetabolicEnergySmooth20
 fgetMetabolicEnergySmooth2010all_neg= Function.load('fgetMetabolicEnergySmooth2010all_neg');
 fgetMetabolicEnergy_MargariaSmooth  = Function.load('fgetMetabolicEnergy_MargariaSmooth');
 cd(pathmain);
+
+
+%% Collocation scheme
+% We use a pseudospectral direct collocation method, i.e. we use Lagrange
+% polynomials to approximate the state derivatives at the collocation
+% points in each mesh interval. We use d=3 collocation points per mesh
+% interval and Radau collocation points.
+pathCollocationScheme = [pathRepo,'/CollocationScheme'];
+addpath(genpath(pathCollocationScheme));
+d = 3; % degree of interpolating polynomial
+method = 'radau'; % collocation method
+[tau_root,C,D,B] = CollocationScheme(d,method);
+
+%% Muscle-tendon parameters
+% Muscles from one leg and from the back
+muscleNames = {'addbrev_r','addlong_r','addmagDist_r','addmagIsch_r','addmagMid_r','addmagProx_r',...
+    'bflh_r','bfsh_r','edl_r','ehl_r','fdl_r','fhl_r','gaslat_r','gasmed_r','glmax1_r','glmax2_r',...
+    'glmax3_r','glmed1_r','glmed2_r','glmed3_r','glmin1_r','glmin2_r','glmin3_r','grac_r','iliacus_r',...
+    'perbrev_r','perlong_r','piri_r','psoas_r','recfem_r','sart_r','semimem_r','semiten_r','soleus_r',...
+    'tfl_r','tibant_r','tibpost_r','vasint_r','vaslat_r','vasmed_r'};
+
+% Muscle indices for later use
+musi = 1:40;
+NMuscle = length(muscleNames)*2;
+
+% Muscle indices for later use
+PathDefaultFunc = fullfile(pathCasADiFunctions,S.CasadiFunc_Folders);
+File_MTparameters = fullfile(PathDefaultFunc,'MTparameters.mat');
+if exist(File_MTparameters,'file')
+   load(File_MTparameters,'MTparameters');
+else
+    % This file was saved in another location in the old implementation
+    pathmusclemodel = fullfile(pathRepo,'MuscleModel',subject);
+    load([pathmusclemodel,'/MTparameters_',subject, '.mat'],'MTparameters');
+end
+MTparameters_m = [MTparameters(:,musi),MTparameters(:,musi)];
+
+% Parameters for activation dynamics
+tact = 0.015; % Activation time constant
+tdeact = 0.06; % Deactivation time constant
+
+%% Metabolic energy model parameters
+% We extract the specific tensions and slow twitch rations.
+pathMetabolicEnergy = [pathRepo,'/MetabolicEnergy'];
+addpath(genpath(pathMetabolicEnergy));
+% (1:end-3), since we do not want to count twice the back muscles
+tension = getSpecificTensions(muscleNames);
+tensions = [tension;tension];
+% (1:end-3), since we do not want to count twice the back muscles
+pctst = getSlowTwitchRatios(muscleNames);
+pctsts = [pctst;pctst];
+
 
 
 %% Experimental data
