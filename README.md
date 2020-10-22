@@ -91,6 +91,36 @@ f_LoadSim_Gait92(S.ResultsFolder,S.savename) % post-process simulation results
 
 
 
+### Plot output
+
+You can use the function PlotResults_3DSim the create a default figure with a summary of the results. You can easily add multiple simulations to this figure. For example
+
+
+
+```matlab
+
+%.....
+% simulation walking 1.25 m/s
+S.v_tgt = 1.25;
+S.savename = 'WalkingNormal'
+f_PredSim_Gait92(S);     % run the optimization
+f_LoadSim_Gait92(S.ResultsFolder,S.savename) % post-process simulation results (saves results as S.savename with the extension _pp)
+
+% simulate walking 0.5 m/s
+S.v_tgt = 0.5;
+S.savename = 'WalkingSlow'
+f_PredSim_Gait92(S);     % run the optimization
+f_LoadSim_Gait92(S.ResultsFolder,S.savename) % post-process simulation results (saves results as S.savename with the extension _pp)
+
+% plot figure to compare results (with the three optional input arguments here)
+h = figure(); 	% new figure with handle
+PlotResults_3DSim(fullfile(S.ResultsFolder,'WalkingNormal_pp.mat'),[1 0 0],'Normal',h,1.25,'speed'); 	% plot results of normal walking
+PlotResults_3DSim(fullfile(S.ResultsFolder,'WalkingSlow_pp.mat'),[0 0 1],'Slow',h,0.5,'speed'); 	% plot results of slow walking on same figure
+
+```
+
+
+
 #### Settings- Required
 
 - **PolyFolder**: Folder with the surrogate model for the muscle-tendon length and moment arms (from step 1 of the section "Create all input for the simulations"). This path to the folder is relative to the folder (./Polynomials) [string]

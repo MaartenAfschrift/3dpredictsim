@@ -126,7 +126,7 @@ if strcmp(ModelName,'Rajagopal')
     order_Qs = [7 8 9 10 12 13 14]+1;
     q = dummy_motion.data(:,order_Qs).*(pi/180);
     % adapt the angle the knee such that it's similar to the definition in
-    % opensim.
+    % gait92 model
     q(:,4) = -q(:,4);
     % changes sign moment arms knee joint
     MA.knee.flex.data(:,2:end) = -MA.knee.flex.data(:,2:end);
