@@ -1,7 +1,5 @@
-3dpredictsim
+Predictive simulations human movement
 ============
-
-
 
 This repository is a fork of the code and data to generate three-dimensional muscle-driven predictive simulations of human gait as described in: Falisse A, Serrancoli G, Dembia C, Gillis J, Jonkers J, De Groote F. 2019 Rapid predictive simulations with complex musculoskeletal models suggest that diverse healthy and pathological human gaits can emerge from similar control strategies. Journal of the Royal Society Interface 16: 20190402. http://dx.doi.org/10.1098/rsif.2019.0402. 
 
@@ -18,22 +16,20 @@ Besides that, the code was also adapted in accordance with recent (October 2020)
 - support for parallel computing
 - formulation with opti
 
-
-
 ### Create all input for the simulations
 
 When using a new/adapted musclulosketal model, you have to execute three steps to create the surrogate models and equations needed for optimization. An example of these steps are shown in the matlab script **./ConvertOsimModel/Example_PrepareOptimimzation.m** 
 
 A summary of the steps:
 
-##### 1 Polynomial fitting
+#### 1. Polynomial fitting
 
 The funciton FitPolynomials create a surrogate model, based on polynomial functions, to compute muscle-tendon lengths and moment arms from the joint kinematics. 
 
 - First, we create a sample of joint angles (i.e. dummy motion) and run muscle analysis on this dummy motion to create a training dataset. Note that running the muscle analysis takes about 20 minutes. 
 - Second, we fit the polynomials functions and save it in a spefici folder (input argument PolyFolder). You'll have to point to this folder using the settings *S.PolyFolder* when running the optimization
 
-##### 2. Create casadi functions
+#### 2. Create casadi functions
 
 In the next step we read the muscle-tendon parameters from the model, combine it with the polynomial functions and create a casadi function for most of the equations used in the optimization. This includes:
 
@@ -45,11 +41,11 @@ In the next step we read the muscle-tendon parameters from the model, combine it
 
 These functions are saved in a specific folder (input argument CasadiFunc_Folders). You'll have to point to this folder using the settings *S.CasadiFunc_Folders* when running the optimization
 
-##### 3. Automatically create .dll files
+#### 3. Automatically create .dll files
 
 You have to provide a .cpp file that solves inverse dynamics with the current model you are using. Note that creating this .cpp file (with the correct modelling parameters) is still a manual step. The conversion from .cpp to .dll is automized in the function CreateDllFileFromCpp, which you can download here https://github.com/MaartenAfschrift/CreateDll_PredSim
 
-##### 4. Run your simulation
+#### 4. Run your simulation
 
 You can now run your tracking or predictive simulations when pointing to the correct:
 
@@ -109,7 +105,7 @@ f_LoadSim_Gait92(S.ResultsFolder,S.savename) % post-process simulation results
 
 
 
-### Settings - optional
+#### Settings - optional
 
 **Simulated motion**
 
@@ -134,8 +130,9 @@ f_LoadSim_Gait92(S.ResultsFolder,S.savename) % post-process simulation results
 - **W.exp_E**: power metabolic energy (default is 2)
 - **W.Mtp**: weight mtp excitations (default is 10^6)
 - **W.u**: weight on excitations arms actuators (default is 0.001)
+- **W.Lumbar: ** weight on miniizing lumbar activations (in Rajagopal model) (default is 10^5)
 
-**Initial guess**
+**Initial guess** (Note: I should improve this in the future)
 
 - **IGmodeID**: initial guess based on (1)walking motion, (2) running motion, (3) previous solution in the *Results* folder, (4) previous solution in the *./IG/data folder* default is (1)
 
@@ -143,7 +140,11 @@ f_LoadSim_Gait92(S.ResultsFolder,S.savename) % post-process simulation results
 
 - **IKfile_guess**: relative path to IK file used for initial guess (used when IGsel = 2 and IGmodeID is 1 or 2). Default is *OpenSimModel\IK_Guess_Default.mat*
 
-  
+- **savename_ig**: name of the IK file used for initial guess (used when IGmodelID is 4). This file should be in *./IG/data folder*. [string]
+
+- **ResultsF_ig:** name of Folder with IK file for setting *savename_ig* (see above) when IGmodelID is 3 [string].
+
+- **IG_PelvisY**: height of the pelvis in the quasi-random initial guess (in m) [double]
 
 **Adapting bounds**
 
@@ -153,5 +154,14 @@ f_LoadSim_Gait92(S.ResultsFolder,S.savename) % post-process simulation results
 - **Bounds.ActLowerKnee**: lower bound on activation of the knee muscles
 - **S.Bounds.ActLowerAnkle**: lower bound on activation of the ankle muscles
 
+**Kinematic constraints**
+
+- **Constr.calcn:** minimal distance between calcneneus (origin) in the transversal plane. default is 0.09m [double]
+- **Constr.toes:** minimal distance between toes (origin) in the transversal plane. default is 0.09m [double]
+- **Constr.tibia:** minimal distance between tibia(?s) (origin) in the transversal plane. default is 0.09m [double]
+
 **Exoskeleton control **
 
+- **DataSet**: name of the folder with exoskeleton assistance profile (saved in the folder *./Data*) with a .mat file named *torque_profile.mat*. This mat file should contain the variables *time* and *torque* with the torque profile for one full stride.
+- **ExoBool:** Boolean to select if you want to include the torque profile (i.e. use exoskeleton)
+- **ExoScale:** scale factor for the torque profile.

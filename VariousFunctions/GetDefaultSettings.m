@@ -71,6 +71,9 @@ if isfield(S,'W')
     if ~isfield(S.W,'u')
         S.W.u       = 0.001;    % weight on excitations arms actuators
     end
+    if ~isfield(S.W,'Lumbar')
+        S.W.Lumbar  = 10^5;
+    end
 else
     S.W.E       = 500;      % weight metabolic energy rate
     S.W.Ak      = 50000;    % weight joint accelerations
@@ -80,6 +83,7 @@ else
     S.W.exp_E   = 2;        % power metabolic energy
     S.W.Mtp     = 10^6;     % weight mtp excitations
     S.W.u       = 0.001;    % weight on excitations arms actuators
+    S.W.Lumbar  = 10^5;
 end
 
 % initial guess identifier (1: quasi random, 2: data-based)
@@ -211,7 +215,27 @@ if ~isfield(S,'S.IKfile_guess')
     S.IKfile_guess = 'OpenSimModel\IK_Guess_Default.mat';
 end
 
+% path with exoskeleton torque profile
+if ~isfield(S,'DataSet')
+    S.DataSet = 'PoggenSee2020_AFO';
+end
+
+% Boolean for exoskeleton use
+if ~isfield(S,'ExoBool')
+    S.ExoBool       = 0;
+end
+
+% scaling assistance profile
+if ~isfield(S,'ExoScale')
+    S.ExoScale      = 0;        % scale factor of exoskeleton assistance profile = 0 (i.e. no assistance)
+end
+
 % Print the settings to the screen
 disp(S);
+
+
+
+
+
 end
 
