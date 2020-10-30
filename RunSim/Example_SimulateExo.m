@@ -51,8 +51,8 @@ S.ExoScale      = 0;        % scale factor of exoskeleton assistance profile = 0
 S.ExternalFunc  = 'SimExo_3D_talus_out.dll';        % external function
 S.ExternalFunc2 = 'SimExo_3D_ExportAll.dll';        % external function for post-processing
 S.savename      = 'Passive';
-%f_PredSim_Gait92(S);     % run the optimization
-%f_LoadSim_Gait92(S.ResultsFolder,S.savename) % post-proces simulation results
+f_PredSim_Gait92(S);     % run the optimization
+f_LoadSim_Gait92(S.ResultsFolder,S.savename) % post-proces simulation results
 
 % Simulation with active exoskeleton
 S.ExoBool       = 1;    
@@ -60,6 +60,6 @@ S.ExoScale      = 1;
 S.savename      = 'Active';
 S.ExternalFunc  = 'SimExo_3D_talus_out.dll';        % external function
 S.ExternalFunc2 = 'SimExo_3D_ExportAll.dll';        % external function for post processing
-%f_PredSim_Gait92(S);     % run the optimization
-%f_LoadSim_Gait92(S.ResultsFolder,S.savename) % post-proces simulation results
+f_PredSim_Gait92(S);     % run the optimization
+f_LoadSim_Gait92(S.ResultsFolder,S.savename) % post-proces simulation results
 
