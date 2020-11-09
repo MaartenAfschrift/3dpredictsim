@@ -233,8 +233,8 @@ fgetMetabolicEnergySmooth2004all = Function.load('fgetMetabolicEnergySmooth2004a
 cd(pathmain);
 
 %% load the metalbolic energy equations
-PathDefaultFunc = fullfile(pathCasADiFunctions,'EnergyModels');
-cd(PathDefaultFunc);
+PathEnergyEq = fullfile(pathCasADiFunctions,'EnergyModels');
+cd(PathEnergyEq);
 fgetMetabolicEnergySmooth2003all    = Function.load('fgetMetabolicEnergySmooth2003all');
 fgetMetabolicEnergySmooth2010all    = Function.load('fgetMetabolicEnergySmooth2010all');
 fgetMetabolicEnergySmooth2016all    = Function.load('fgetMetabolicEnergySmooth2016all');
