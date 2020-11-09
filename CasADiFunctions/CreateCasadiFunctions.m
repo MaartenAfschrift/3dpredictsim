@@ -112,7 +112,6 @@ nq.abs      = length(ground_pelvisi); % ground-pelvis
 nq.trunk    = length(trunki); % trunk
 nq.arms     = length(armsi); % arms
 nq.mtp     = length(mtpi); % arms
-nq.leg      = 7; % #joints needed for polynomials
 
 
 %% Polynomial approximation
