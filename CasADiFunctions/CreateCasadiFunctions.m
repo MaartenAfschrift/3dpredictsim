@@ -30,7 +30,7 @@ else
 end
     
 %% specific settings depending on the model used
-
+BoolRajagopal = false;
 if strcmp(ModelName,'Rajagopal')
     % number of input dofs for polynomials
     nq.leg          = 7; % #joints needed for polynomials
@@ -47,6 +47,10 @@ if strcmp(ModelName,'Rajagopal')
     % indexes of muscles selected for casadifunctions (assuming symmetry
     % on left and right side)    
     iMuscle_unique = 1:length(muscleNames);
+    % indexes of muscles for polynomial approximation
+    musi_pol = iMuscle_unique;
+    % Boolean to indicate that Rajagopal model is used
+    BoolRajagopal = true;
 elseif strcmp(ModelName,'Gait92')
     % number of input dofs for polynomials
     nq.leg          = 10;
@@ -68,7 +72,11 @@ elseif strcmp(ModelName,'Gait92')
     IndexCalf = [32 33 34 78 79 80];
     % indexes of muscles selected for casadifunctions (assuming symmetry
     % on left and right side)
-    iMuscle_unique = 1:length(muscleNames(1:end-3));    
+    iMuscle_unique = 1:length(muscleNames(1:end-3));
+    % For the polynomials, we want all independent muscles. So we do not need
+    % the muscles from both legs, since we assume bilateral symmetry, but want
+    % all muscles from the back (indices 47:49). 
+    musi_pol = [iMuscle_unique,47,48,49];
 end
 
 %% User input settings
@@ -83,17 +91,13 @@ aTendon(IndexCalf) = 20;
 shift = getShift(aTendon);
 
 %% Muscle-tendon parameters
-% (1:end-3), since we do not want to count twice the back muscles
-musi = iMuscle_unique;
-% Total number of muscles
-NMuscle = length(musi)*2;
 % Muscle-tendon parameters. Row 1: maximal isometric forces; Row 2: optimal
 % fiber lengths; Row 3: tendon slack lengths; Row 4: optimal pennation
 % angles; Row 5: maximal contraction velocities
-Mnames = DispMusclesOsimModel(ModelPath);
-muscleNames = Mnames(musi);
-MTparameters = ReadMuscleParameters(ModelPath,muscleNames);
-MTparameters_m = [MTparameters(:,musi),MTparameters(:,musi)];
+% Mnames = DispMusclesOsimModel(ModelPath);
+NamesUnique =  muscleNames(iMuscle_unique);
+MTparameters = ReadMuscleParameters(ModelPath,NamesUnique);
+MTparameters_m = [MTparameters MTparameters];
 
 %% Indices external function
 % Indices of the elements in the external functions
@@ -124,14 +128,14 @@ load([pathpolynomial,'/MuscleInfo.mat'],...
     'MuscleInfo');
 
 % Nuber of muscles with polynomial approx
-NMuscle_pol = length(musi);
+NMuscle_pol = length(musi_pol);
 
 % get the indexes for the moment arms
 [~,mai] = MomentArmIndices(muscleNames,muscle_spanning_joint_INFO);
 
 % create casadi function to 
-muscle_spanning_info_m = muscle_spanning_joint_INFO(musi,:);
-MuscleInfo_m.muscle    = MuscleInfo.muscle(musi);
+muscle_spanning_info_m = muscle_spanning_joint_INFO(musi_pol,:);
+MuscleInfo_m.muscle    = MuscleInfo.muscle(musi_pol);
 qin     = SX.sym('qin',1,nq.leg);
 qdotin  = SX.sym('qdotin',1,nq.leg);
 lMT     = SX(NMuscle_pol,1);
@@ -658,7 +662,6 @@ f_TAnkle.save(fullfile(OutPath,'f_TAnkle'));
 f_TSubt.save(fullfile(OutPath,'f_TSubt'));
 
 %% Function to compute muscle mass
-BoolRajagopal = 1;
 [MassM] = GetMuscleMass(muscleNames,MTparameters_m,BoolRajagopal);
 save(fullfile(OutPath,'MassM.mat'),'MassM');
 
