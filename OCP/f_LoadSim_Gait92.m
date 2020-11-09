@@ -92,15 +92,15 @@ ExtF = S.ExternalFunc;
 F = external('F',ExtF);
 
 % external function selected for post-processing
-if isfield(S,'ExternalFunc2')   
-   F1 = external('F',S.ExternalFunc2);
+if isfield(S,'ExternalFunc2')
+    F1 = external('F',S.ExternalFunc2);
 elseif F.nnz_in ==  nq.all*3
     warning(['No external was selected for post processing. Post processing',...
-         'is done with Browning_2008_pp.dll']);
-   F1 = external('F', 'Browning_2008_pp.dll');
-elseif F.nnz_in ==  nq.all*3 + 2   
-   F1 = external('F','SimExo_3D_ExportAll.dll');
-   disp('Selected SimExo_3D_ExportAll.dll as external function because S.ExternalFunc2 was not specified');
+        'is done with Browning_2008_pp.dll']);
+    F1 = external('F', 'Browning_2008_pp.dll');
+elseif F.nnz_in ==  nq.all*3 + 2
+    F1 = external('F','SimExo_3D_ExportAll.dll');
+    disp('Selected SimExo_3D_ExportAll.dll as external function because S.ExternalFunc2 was not specified');
 end
 cd(pathmain);
 
@@ -112,7 +112,7 @@ ExoImplementation = 'IdealAnkle'; % (1) ankle actuation (2) passive afo, (3) tor
 if F.nnz_in == nq.all*3+2
     % After the first simulations report (May 12 2020), we changed the implemenation of the exoskeleton assistance
     % to a torque actuator at the calcaneus and tibia. We also changed from two .dll files (one for optimization and one
-    % for post processing) to one .dll file for everything. 
+    % for post processing) to one .dll file for everything.
     ExoImplementation = 'TorqueTibiaCalcn';
 elseif strcmp(ExtF,'PredSim_3D_GRF.dll') && isfield(S,'AFO_stiffness')
     % AFO modelled as in Nuckols 2019: Ultrasound imaging links soleus
@@ -272,13 +272,13 @@ muscleNames = {'glut_med1_r','glut_med2_r','glut_med3_r',...
     'intobl_l','extobl_l'};
 
 % indices of muscles
-musi = MuscleIndices(muscleNames(1:end-3));
+musi = MuscleIndices(muscleNames(1:end-3),muscleNames);
 NMuscle = length(muscleNames(1:end-3))*2;
 
 % Muscle indices for later use
 File_MTparameters = fullfile(PathDefaultFunc,'MTparameters.mat');
-if exist(File_MTparamters,'file')
-   load(File_MTparameters,'MTparameters');
+if exist(File_MTparameters,'file')
+    load(File_MTparameters,'MTparameters');
 else
     % This file was saved in another location in the old implementation
     pathmusclemodel = fullfile(pathRepo,'MuscleModel',subject);
@@ -289,7 +289,7 @@ MTparameters_m = [MTparameters(:,musi),MTparameters(:,musi)];
 
 % path to the polynomial functions
 if isfield(S,'PolyFolder') && ~isempty(S.PolyFolder)
-    % default location 
+    % default location
     pathpolynomial = fullfile(pathRepo,'Polynomials',S.PolyFolder);
 else
     % old version (we still want to be able to process these results)
@@ -318,12 +318,21 @@ pctsts = [pctst;pctst];
 %% file with mass of muscles
 MassFile = fullfile(PathDefaultFunc,'MassM.mat');
 if exist(MassFile,'file')
-   MuscleMass = load(MassFile);
+    MuscleMass = load(MassFile);
 else
     MassFile = fullfile(pathCasADiFunctions,'MassM.mat');
     MuscleMass =load(MassFile);
 end
 
+%% Exoskeleton torque (needed to process old simulation files)
+if ~exist('ExoVect','var')
+    load(Outname,'ExoControl');
+    if ~isempty(ExoControl)
+        ExoVect = [ExoControl.Tankle_l; ExoControl.Tankle_r];
+    else
+        ExoVect = zeros(2,N);
+    end
+end
 %% Joints
 joints = {'pelvis_tilt','pelvis_list','pelvis_rotation','pelvis_tx',...
     'pelvis_ty','pelvis_tz','hip_flexion_l','hip_adduction_l',...
@@ -553,7 +562,7 @@ if S.ExoBool == 1 && strcmp(ExoImplementation,'TorqueTibiaCalcn')
 end
 
 for i = 1:N
-    % ID moments    
+    % ID moments
     if F1.nnz_in == nq.all*3 + 2
         if S.ExoBool == 1 && strcmp(ExoImplementation,'TorqueTibiaCalcn')
             [res2] = F1([Xk_Qs_Qdots_opt(i,:)';Xk_Qdotdots_opt(i,:)'; -ExoVect(:,i)]);
@@ -593,15 +602,15 @@ for i = 1:d*N
     % inverse dynamics
     if F1.nnz_in == nq.all*3 + 2
         if S.ExoBool == 1 && strcmp(ExoImplementation,'TorqueTibiaCalcn')
-            [res2] = F1([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)'; -ExoVect(:,iMesh)]); 
-            [res2_or] = F([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)'; -ExoVect(:,iMesh)]); 
+            [res2] = F1([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)'; -ExoVect(:,iMesh)]);
+            [res2_or] = F([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)'; -ExoVect(:,iMesh)]);
         end
         [res] = F1([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)'; 0; 0]);
         [res_or] = F([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)'; 0; 0]);
     else
         [res] = F1([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)']);
         [res_or] = F([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)']);
-    end    
+    end
     Foutj_opt(i,:) = full(res);
     Foutj_opt(i,1:nq.all) = full(res_or(1:nq.all)); % extract ID moments from external function used in the optimization
     if S.ExoBool == 1 && strcmp(ExoImplementation,'TorqueTibiaCalcn')
@@ -712,7 +721,7 @@ for k=1:N
             full(lMtilde_opt_all),...
             full(vM_opt_all),full(Fce_opt_all)',full(Fpass_opt_all)',...
             MuscleMass.MassM',pctsts,full(Fiso_opt_all)',body_mass,10);
-        e_tot_opt_all = full(e_tot_all)';        
+        e_tot_opt_all = full(e_tot_all)';
         
         % objective function
         J_opt = J_opt + 1/(dist_trav_opt)*(...
@@ -1042,8 +1051,8 @@ end
 if strcmp(ExoImplementation,'TorqueTibiaCalcn')
     % get ID with exoskeleton as percentage of gait cycle
     Ts_opt_Exo = zeros(N*2,size(Qs_opt,2));
-    Ts_opt_Exo(1:N-IC1i_c+1,1:nq.all) = Foutk_opt_Exo(IC1i_c:end,1:nq.all);     
-    Ts_opt_Exo(N-IC1i_c+2:N-IC1i_c+1+N,QsSymA_ptx) = Foutk_opt_Exo(1:end,QsSymB_ptx); % 
+    Ts_opt_Exo(1:N-IC1i_c+1,1:nq.all) = Foutk_opt_Exo(IC1i_c:end,1:nq.all);
+    Ts_opt_Exo(N-IC1i_c+2:N-IC1i_c+1+N,QsSymA_ptx) = Foutk_opt_Exo(1:end,QsSymB_ptx); %
     Ts_opt_Exo(N-IC1i_c+2:N-IC1i_c+1+N,QsOpp) = -Foutk_opt_Exo(1:end,QsOpp);
     Ts_opt_Exo(N-IC1i_c+2+N:2*N,1:nq.all) = Foutk_opt_Exo(1:IC1i_c-1,1:nq.all);
     % If the first heel strike was on the left foot then we invert so that
@@ -1127,7 +1136,7 @@ if writeIKmotion
     OutFolder = fullfile(pathRepo,'Results',S.ResultsFolder);
     filenameJointAngles = fullfile(OutFolder,[S.savename '.mot']);
     write_motionFile(JointAngleMuscleAct, filenameJointAngles);
-   
+    
     if strcmp(ExoImplementation,'TorqueTibiaCalcn')  || F1.nnz_out == 73
         % compute COP information
         nfr = length(Qs_GC(:,1));
@@ -1135,10 +1144,10 @@ if writeIKmotion
         qdqdd(:,1:2:62) = Qs_GC;
         qdqdd(:,2:2:62) = Qdots_GC;
         qdd = Qdotdots_GC;
-        qdqdd(:,[1:6 13:end]) = qdqdd(:,[1:6 13:end])*pi./180;        
-        qdqdd(:,11) = qdqdd(:,11);        
+        qdqdd(:,[1:6 13:end]) = qdqdd(:,[1:6 13:end])*pi./180;
+        qdqdd(:,11) = qdqdd(:,11);
         COPR = zeros(nfr,3);    FR = zeros(nfr,3);  MR = zeros(nfr,3);
-        COPL = zeros(nfr,3);    FL = zeros(nfr,3);  ML = zeros(nfr,3);        
+        COPL = zeros(nfr,3);    FL = zeros(nfr,3);  ML = zeros(nfr,3);
         for ind = 1:nfr
             if F1.nnz_in == nq.all*3+2
                 res = full(F1([qdqdd(ind,:)'; qdd(ind,:)'; 0;0])); % torque L and R exo added
@@ -1162,7 +1171,7 @@ if writeIKmotion
         colnames = get_GRFlabels();
         filenameGRF = fullfile(OutFolder,[S.savename '_GRF.mot']);
         time =JointAngleMuscleAct.data(:,1);
-        generateMotFile([time dataOut], ['time ' colnames], filenameGRF);        
+        generateMotFile([time dataOut], ['time ' colnames], filenameGRF);
     end
 end
 
@@ -1272,7 +1281,7 @@ for nn = 1:2*N
         full(Fiso_optt)',body_mass,10);
     
     % Margaria 1968
-    eMarg1968 = fgetMetabolicEnergy_MargariaSmooth(full(Fce_optt)',full(vM_opt)');    
+    eMarg1968 = fgetMetabolicEnergy_MargariaSmooth(full(Fce_optt)',full(vM_opt)');
     
     % store results
     e_mo_opt(nn) = full(eBargh)';
@@ -1340,7 +1349,7 @@ EnergyV.Umb2010         = metab_Umb2010;
 EnergyV.Uchida2016      = metab_Uchida2016;
 EnergyV.Umb2010_h1      = metab_Umb2010_h1;
 EnergyV.Umb2010_neg     = metab_Umb2010_neg;
-EnergyV.Marg1968        = metab_Marg1968;
+EnergyV.Marg1968        = sum(metab_Marg1968,2);
 
 % Store Energy (with basal rate)
 EnergyVB.Bargh2004       = metab_Bargh2004B;
@@ -1349,7 +1358,7 @@ EnergyVB.Umb2010         = metab_Umb2010B;
 EnergyVB.Uchida2016      = metab_Uchida2016B;
 EnergyVB.Umb2010_h1      = metab_Umb2010_h1B;
 EnergyVB.Umb2010_neg     = metab_Umb2010_negB;
-EnergyVB.Marg1968        = metab_Marg1968;
+EnergyVB.Marg1968        = sum(metab_Marg1968,2);
 
 %% subtract energy cost of standing in the computations of COT
 % Note: this is de default method in pulmonary gas exchange papers.
@@ -1373,7 +1382,7 @@ else
     COTrel.Umb2010_neg  = [];
     COTrel.Marg1968     = [];
 end
-    
+
 %% Analyse passive exoskeleton support
 % Nuckols 2019
 if strcmp(ExoImplementation,'Nuckols2019')
@@ -1419,7 +1428,7 @@ R.MetabB.Adot = metab_Adot;
 R.MetabB.Mdot = metab_Mdot;
 R.MetabB.Sdot = metab_Sdot;
 R.MetabB.Wdot = metab_Wdot;
-R.ExoControl  = ExoControl;
+% R.ExoControl  = ExoControl;
 R.S           = S;  % settings for post processing
 R.Sopt        = Sopt; % original settings used to solve the OCP
 R.body_mass   = body_mass;
@@ -1448,12 +1457,12 @@ R.COTrel      = COTrel;
 
 if strcmp(ExoImplementation,'TorqueTibiaCalcn')
     R.TidExo = Ts_opt_Exo.*body_mass;
-    R.Exodiff_id = TExo_Joint.*body_mass;   
+    R.Exodiff_id = TExo_Joint.*body_mass;
 end
 
 if F1.nnz_out == 73
     R.COPL = COPL;
-    R.COPR = COPR; 
+    R.COPR = COPR;
 end
 
 % nuckols 2019 results
