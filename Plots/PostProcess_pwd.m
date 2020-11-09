@@ -35,7 +35,7 @@ for i = 1:ct-1
     [mainR,Fname ]= fileparts(path);
     BoolExist = exist(fullfile(path,[name '_pp.mat']),'file');
     if BoolReComp | BoolExist == 0
-        f_LoadSim_PoggenSee2020_DefaultS(Fname,name);
+        f_LoadSim_Gait92(Fname,name);
     else
         disp(['Omitting file: ' fullfile(path,[name '_pp.mat'])]);
     end
