@@ -230,6 +230,11 @@ if ~isfield(S,'ExoScale')
     S.ExoScale      = 0;        % scale factor of exoskeleton assistance profile = 0 (i.e. no assistance)
 end
 
+% design assistance profile
+if ~isfield(S,'OptTexo_Ankle')
+    S.OptTexo_Ankle.Bool = false;
+end
+
 % Print the settings to the screen
 disp(S);
 

@@ -123,7 +123,7 @@ for i =1:length(ListCopy)
 end
 %% plot figure
 figure(); 
-bar(paramsOut(1,:)-params_Gait92(1,:));
+bar((paramsOut(1,:)-params_Gait92(1,:))./params_Gait92(1,:));
 ylabel('\Delta Fiso');
 set(gca,'XTick',1:92);
 set(gca,'TickLabelInterpreter','none');
