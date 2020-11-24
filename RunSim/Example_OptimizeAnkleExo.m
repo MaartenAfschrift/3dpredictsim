@@ -3,8 +3,8 @@
 clear all; close all; clc;
 % settings for optimization
 S.v_tgt     = 1.25;     % average speed
-S.N         = 20;       % number of mesh intervals
-S.NThreads  = 2;        % number of threads for parallel computing
+S.N         = 50;       % number of mesh intervals
+S.NThreads  = 8;        % number of threads for parallel computing
 
 % quasi random initial guess, pelvis y position
 S.IG_PelvisY = 0.896;   % subject 1 poggensee
@@ -47,7 +47,7 @@ S.OptTexo_Ankle.Pbound = [ -300 300];   % Bound on power
 % Simulation with active exoskeleton
 S.ExoBool       = 1;    
 S.ExoScale      = 1;
-S.savename      = 'Active';
+S.savename      = 'Active_N50';
 S.ExternalFunc  = 'SimExo_3D_talus_out.dll';        % external function
 S.ExternalFunc2 = 'SimExo_3D_ExportAll.dll';        % external function for post processing
 f_PredSim_Gait92(S);     % run the optimization

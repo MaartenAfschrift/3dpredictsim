@@ -3,8 +3,8 @@
 clear all; close all; clc;
 % settings for optimization
 S.v_tgt     = 1.25;     % average speed
-S.N         = 20;       % number of mesh intervals
-S.NThreads  = 2;        % number of threads for parallel computing
+S.N         = 100;       % number of mesh intervals
+S.NThreads  = 8;        % number of threads for parallel computing
 
 % quasi random initial guess, pelvis y position
 S.IG_PelvisY = 0.896;   % subject 1 poggensee
@@ -51,7 +51,7 @@ S.OptTexo_AnkleKneeHip.Pbound_Hip = [-300 300];
 % Simulation with active exoskeleton
 S.ExoBool       = 1;    
 S.ExoScale      = 1;
-S.savename      = 'Active';
+S.savename      = 'Opt_AnkleKneeHip_N100';
 S.ExternalFunc  = 'SimAnkleKneeHipExo.dll';        % external function
 S.ExternalFunc2 = 'SimAnkleKneeHipExo_pp.dll';        % external function for post processing
 f_PredSim_Gait92(S);     % run the optimization

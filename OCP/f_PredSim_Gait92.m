@@ -330,7 +330,7 @@ if S.OptTexo_Ankle.Bool
     ExoVect = opti.variable(2, N);
     opti.subject_to(S.OptTexo_Ankle.Tbound(1)< ExoVect < S.OptTexo_Ankle.Tbound(2));
     opti.set_initial(ExoVect,zeros(2,N));
-elseif S.OptTexo_AnkleKneeHip
+elseif S.OptTexo_AnkleKneeHip.Bool
     ExoVect = opti.variable(6, N);
     opti.subject_to(S.OptTexo_AnkleKneeHip.Tbound_Ankle(1) < ...
         ExoVect(1:2,:) < S.OptTexo_AnkleKneeHip.Tbound_Ankle(2));
@@ -655,7 +655,7 @@ for j=1:d
         ctIneq = ctIneq + length(Qconstr);
     elseif S.OptTexo_AnkleKneeHip.Bool
         iVect = [jointi.ankle.l jointi.ankle.r jointi.knee.l jointi.knee.r , ...
-            jointi.hip.l jointi.hip.r];
+            jointi.hip_flex.l jointi.hip_flex.r];
         for iv = 1:6
             Qconstr = Texok(iv).*Qskj_nsc(iVect(iv),j+1);
             ineq_constr(ctIneq:ctIneq+length(Qconstr)-1) = Qconstr;

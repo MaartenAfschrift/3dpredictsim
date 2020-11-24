@@ -267,7 +267,7 @@ end
 
 %% Booleans for flow control based on input
 if S.OptTexo_Ankle.Bool || S.OptTexo_Knee.Bool || S.OptTexo_Hip.Bool || ...
-        S.OptTexo_AnkleKneeHip
+        S.OptTexo_AnkleKneeHip.Bool
     S.ExoDesignBool = true;
 else
     S.ExoDesignBool = false;
