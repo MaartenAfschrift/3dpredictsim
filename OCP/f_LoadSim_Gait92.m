@@ -107,8 +107,6 @@ cd(pathmain);
 
 %% Test the type of simulation
 ExoImplementation = 'IdealAnkle'; % (1) ankle actuation (2) passive afo, (3) torque actuator
-
-
 if F.nnz_in == nq.all*3+2
     % After the first simulations report (May 12 2020), we changed the implemenation of the exoskeleton assistance
     % to a torque actuator at the calcaneus and tibia. We also changed from two .dll files (one for optimization and one
@@ -120,6 +118,10 @@ elseif strcmp(ExtF,'PredSim_3D_GRF.dll') && isfield(S,'AFO_stiffness')
     % elastic ankle exoskeletons
     disp('Post processing of passive AFO as in Nuckols - ultrasound paper');
     ExoImplementation = 'Nuckols2019';
+elseif F.nnz_in == nq.all*3+6 
+    % typtical implementation when simulation with ankle-knee-hip
+    % exoskeleton
+    ExoImplementation = 'TorqueTibiaCalcn';
 else
     disp('Default processing with active exoskeleton (Poggensee paper)')
 end
@@ -233,8 +235,8 @@ fgetMetabolicEnergySmooth2004all = Function.load('fgetMetabolicEnergySmooth2004a
 cd(pathmain);
 
 %% load the metalbolic energy equations
-PathDefaultFunc = fullfile(pathCasADiFunctions,'EnergyModels');
-cd(PathDefaultFunc);
+PathEnergyEq = fullfile(pathCasADiFunctions,'EnergyModels');
+cd(PathEnergyEq);
 fgetMetabolicEnergySmooth2003all    = Function.load('fgetMetabolicEnergySmooth2003all');
 fgetMetabolicEnergySmooth2010all    = Function.load('fgetMetabolicEnergySmooth2010all');
 fgetMetabolicEnergySmooth2016all    = Function.load('fgetMetabolicEnergySmooth2016all');
@@ -325,7 +327,7 @@ else
 end
 
 %% Exoskeleton torque (needed to process old simulation files)
-if ~exist('ExoVect','var')
+if ~exist('ExoVect','var')    
     load(Outname,'ExoControl');
     if ~isempty(ExoControl)
         ExoVect = [ExoControl.Tankle_l; ExoControl.Tankle_r];
@@ -430,6 +432,14 @@ dFTtilde_col_opt=reshape(w_opt(starti:starti+NMuscle*(d*N)-1),NMuscle,d*N)';
 starti = starti + NMuscle*(d*N);
 qdotdot_col_opt =reshape(w_opt(starti:starti+nq.all*(d*N)-1),nq.all,(d*N))';
 starti = starti + nq.all*(d*N);
+% when optimizing exoskeleton assistance
+if S.OptTexo_Ankle.Bool
+    ExoVect =reshape(w_opt(starti:starti+N*2-1),2,N);
+    starti = starti + 2*N;
+elseif S.OptTexo_AnkleKneeHip.Bool
+    ExoVect =reshape(w_opt(starti:starti+N*2-1),6,N);
+    starti = starti + 6*N;    
+end
 if starti - 1 ~= length(w_opt)
     disp('error when extracting results')
 end
@@ -565,9 +575,11 @@ for i = 1:N
     % ID moments
     if F1.nnz_in == nq.all*3 + 2
         if S.ExoBool == 1 && strcmp(ExoImplementation,'TorqueTibiaCalcn')
+            % compute torque with exoskeleton support
             [res2] = F1([Xk_Qs_Qdots_opt(i,:)';Xk_Qdotdots_opt(i,:)'; -ExoVect(:,i)]);
             [res2_or] = F([Xk_Qs_Qdots_opt(i,:)';Xk_Qdotdots_opt(i,:)'; -ExoVect(:,i)]); % ext func used in optimization
         end
+        % compute torque without exoskeleton support
         [res] = F1([Xk_Qs_Qdots_opt(i,:)';Xk_Qdotdots_opt(i,:)'; 0; 0]);
         [res_or] = F([Xk_Qs_Qdots_opt(i,:)';Xk_Qdotdots_opt(i,:)'; 0; 0]); % ext func used in optimization
     else
@@ -578,7 +590,7 @@ for i = 1:N
     Foutk_opt(i,1:nq.all) = full(res_or(1:nq.all)); % extract ID moments from external function used in the optimization
     if S.ExoBool == 1 && strcmp(ExoImplementation,'TorqueTibiaCalcn')
         Foutk_opt_Exo(i,:) = full(res2);
-        Foutk_opt_Exo(i,1:nq.all) = full(res2_or(1:nq.all));
+        Foutk_opt_Exo(i,1:nq.all) = full(res2_or(1:nq.all));% ID moments based on original function (just to be sure)
     end
     % passive moments
     Tau_passk_opt_all(i,:) = full(f_AllPassiveTorques(q_opt_unsc_all.rad(i+1,:),qdot_opt_unsc_all.rad(i+1,:)));
@@ -615,7 +627,7 @@ for i = 1:d*N
     Foutj_opt(i,1:nq.all) = full(res_or(1:nq.all)); % extract ID moments from external function used in the optimization
     if S.ExoBool == 1 && strcmp(ExoImplementation,'TorqueTibiaCalcn')
         Foutj_opt_Exo(i,:) = full(res2);
-        Foutj_opt_Exo(i,1:nq.all) = full(res2(1:nq.all));
+        Foutj_opt_Exo(i,1:nq.all) = full(res2_or(1:nq.all));% ID moments based on original function (just to be sure)
     end
     % passive torques
     Tau_passj_opt_all(i,:) = full(f_AllPassiveTorques(q_col_opt_unsc.rad(i,:),qdot_col_opt_unsc.rad(i,:)));
@@ -643,7 +655,7 @@ for i = 1:N+1
         [res_or] = F([Xk_Qs_Qdots_opt_all(i,:)';Xk_Qdotdots_opt_all(i,:)'; 0; 0]);
     end
     out_res_opt_all(i,:) = full(res);
-    out_res_opt_all(i,1:nq.all) = full(res(1:nq.all));
+    out_res_opt_all(i,1:nq.all) = full(res_or(1:nq.all)); % ID moments based on original function (just to be sure)
 end
 % The stride length is the distance covered by the calcaneus origin
 % Right leg
