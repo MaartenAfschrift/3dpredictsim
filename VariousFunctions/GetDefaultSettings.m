@@ -2,6 +2,9 @@ function [S] = GetDefaultSettings(S)
 %UNTITLED3 Summary of this function goes here
 %   Detailed explanation goes here
 
+
+%% Default settings
+
 if ~isfield(S,'linear_solver')    
     S.linear_solver = 'mumps';
 end
@@ -230,10 +233,47 @@ if ~isfield(S,'ExoScale')
     S.ExoScale      = 0;        % scale factor of exoskeleton assistance profile = 0 (i.e. no assistance)
 end
 
-% design assistance profile
+% design assistance profile - Ankle
 if ~isfield(S,'OptTexo_Ankle')
     S.OptTexo_Ankle.Bool = false;
 end
+
+% design assistance profile - Knee
+if ~isfield(S,'OptTexo_Kee')
+    S.OptTexo_Knee.Bool = false;
+end
+
+% design assistance profile - Hip
+if ~isfield(S,'OptTexo_Hip')
+    S.OptTexo_Hip.Bool = false;
+end
+
+% design assistance profile - Ankle, Knee, Hip
+if ~isfield(S,'OptTexo_AnkleKneeHip')
+    S.OptTexo_AnkleKneeHip.Bool = false;
+elseif  S.OptTexo_AnkleKneeHip.Bool
+    if ~isfield(S.OptTexo_AnkleKneeHip,'Tbound_Ankle')
+        S.OptTexo_AnkleKneeHip.Tbound_Ankle = [-50 50];
+    end
+    if ~isfield(S.OptTexo_AnkleKneeHip,'Tbound_Knee')
+        S.OptTexo_AnkleKneeHip.Tbound_Knee = [-50 50];
+    end
+    if ~isfield(S.OptTexo_AnkleKneeHip,'Tbound_Hip')
+        S.OptTexo_AnkleKneeHip.Tbound_Hip = [-50 50];
+    end
+end
+
+
+
+%% Booleans for flow control based on input
+if S.OptTexo_Ankle.Bool || S.OptTexo_Knee.Bool || S.OptTexo_Hip.Bool || ...
+        S.OptTexo_AnkleKneeHip
+    S.ExoDesignBool = true;
+else
+    S.ExoDesignBool = false;
+end
+
+
 
 % Print the settings to the screen
 disp(S);

@@ -98,7 +98,7 @@ pathmusclemodel = [pathRepo,'/MuscleModel'];
 addpath(genpath(pathmusclemodel));
 % Total number of muscles
 NMuscle = length(muscleNames(1:end-3))*2;
-pathpolynomial = fullfile(pathRepo,'Polynomials',S.PolyFolder); % default location 
+pathpolynomial = fullfile(pathRepo,'Polynomials',S.PolyFolder); % default location
 tl = load([pathpolynomial,'/muscle_spanning_joint_INFO.mat']);
 [~,mai] = MomentArmIndices(muscleNames(1:end-3),tl.muscle_spanning_joint_INFO);
 
@@ -207,7 +207,9 @@ guess = AdaptGuess_UserInput(guess,bounds,S);
 
 %% exoskeleton torques
 % function to get exoskeleton torques at mesh points
-ExoVect = GetExoTorques(S,pathRepo,N);
+if ~S.ExoDesignBool
+    ExoVect = GetExoTorques(S,pathRepo,N);
+end
 
 %% Index helpers
 % get help indexes for left and right leg and for symmetry constraint
@@ -322,6 +324,22 @@ opti.subject_to(bounds.Qdotdots.lower'*ones(1,d*N) < A_col < ...
     bounds.Qdotdots.upper'*ones(1,d*N));
 opti.set_initial(A_col, guess.Qdotdots_col');
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Design optimal exoskeleton support
+if S.OptTexo_Ankle.Bool
+    ExoVect = opti.variable(2, N);
+    opti.subject_to(S.OptTexo_Ankle.Tbound(1)< ExoVect < S.OptTexo_Ankle.Tbound(2));
+    opti.set_initial(ExoVect,zeros(2,N));
+elseif S.OptTexo_AnkleKneeHip
+    ExoVect = opti.variable(6, N);
+    opti.subject_to(S.OptTexo_AnkleKneeHip.Tbound_Ankle(1) < ...
+        ExoVect(1:2,:) < S.OptTexo_AnkleKneeHip.Tbound_Ankle(2));
+    opti.subject_to(S.OptTexo_AnkleKneeHip.Tbound_Knee(1) < ...
+        ExoVect(3:4,:) < S.OptTexo_AnkleKneeHip.Tbound_Knee(2));
+    opti.subject_to(S.OptTexo_AnkleKneeHip.Tbound_Hip(1) < ...
+        ExoVect(5:6,:) < S.OptTexo_AnkleKneeHip.Tbound_Hip(2));
+end
+
 %% OCP: collocation equations
 % Define CasADi variables for static parameters
 tfk         = MX.sym('tfk');
@@ -351,19 +369,17 @@ e_ak    = MX.sym('e_ak',nq.arms);
 e_mtpk  = MX.sym('e_mtpk',nq.mtp);
 
 % define the exoskeleton assistive torque
-Texok   = MX.sym('Texo',2); % joint moments for the exoskeleton
+nExoDofs = length(ExoVect(:,1));
+Texok   = MX.sym('Texo',nExoDofs,1); % joint moments for the exoskeleton
 
 % Define CasADi variables for "slack" controls
 dFTtildej   = MX.sym('dFTtildej',NMuscle,d);
 Aj          = MX.sym('Aj',nq.all,d);
 J           = 0; % Initialize cost function
 eq_constr   = {}; % Initialize equality constraint vector
-ineq_constr1 = {}; % Initialize inequality constraint vector 1
-ineq_constr2 = {}; % Initialize inequality constraint vector 2
-ineq_constr3 = {}; % Initialize inequality constraint vector 3
-ineq_constr4 = {}; % Initialize inequality constraint vector 4
-ineq_constr5 = {}; % Initialize inequality constraint vector 5
-ineq_constr6 = {}; % Initialize inequality constraint vector 6
+ineq_constr = MX(1000,1); % Initialise inequality constraint vector
+ineq_constr_index = nan(1000); % keeps track of the index of the inequality constraint
+ctIneq      = 1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Time step
 h = tfk/N;
@@ -504,9 +520,9 @@ for j=1:d
     if F.nnz_in == nq.all*3
         % no exoskeleton torque as input in passive simulations
         [Tj] = F([QsQdotskj_nsc(:,j+1);Aj_nsc(:,j)]);    % left and right leg exoskeleton torques as inputs as well.
-    elseif F.nnz_in == nq.all*3+2
+    elseif F.nnz_in > nq.all*3
         % exoskeleton torques as input in active simulations
-        [Tj] = F([QsQdotskj_nsc(:,j+1);Aj_nsc(:,j);-Texok(1); -Texok(2)]);    % left and right leg exoskeleton torques as inputs as well.
+        [Tj] = F([QsQdotskj_nsc(:,j+1);Aj_nsc(:,j); -Texok]);    % left and right leg exoskeleton torques as inputs as well.
     end
     
     % note that this has to be -Texo, since a positive torque around
@@ -589,8 +605,12 @@ for j=1:d
     % Activation dynamics (implicit formulation)
     act1 = vAk_nsc + akj(:,j+1)./(ones(size(akj(:,j+1),1),1)*tdeact);
     act2 = vAk_nsc + akj(:,j+1)./(ones(size(akj(:,j+1),1),1)*tact);
-    ineq_constr1{end+1} = act1;
-    ineq_constr2{end+1} = act2;
+    ineq_constr(ctIneq:ctIneq+length(act1)-1) = act1;
+    ineq_constr_index(ctIneq:ctIneq+length(act1)-1) = 1;
+    ctIneq = ctIneq + length(act1);
+    ineq_constr(ctIneq:ctIneq+length(act2)-1) = act2;
+    ineq_constr_index(ctIneq:ctIneq+length(act2)-1) = 2;
+    ctIneq = ctIneq + length(act2);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Contraction dynamics (implicit formulation)
     eq_constr{end+1} = Hilldiffj;
@@ -598,47 +618,96 @@ for j=1:d
     % Constraints to prevent parts of the skeleton to penetrate each
     % other.
     % Origins calcaneus (transv plane) at minimum 9 cm from each other.
-    ineq_constr3{end+1} = f_Jnn2(Tj(calcOr.r,1) - Tj(calcOr.l,1));
+    Qconstr = f_Jnn2(Tj(calcOr.r,1) - Tj(calcOr.l,1));
+    ineq_constr(ctIneq:ctIneq+length(Qconstr)-1) = Qconstr;
+    ineq_constr_index(ctIneq:ctIneq+length(Qconstr)-1) = 3;
+    ctIneq = ctIneq + length(Qconstr);
     % Constraint to prevent the arms to penetrate the skeleton
     % Origins femurs and ipsilateral hands (transv plane) at minimum
     % 18 cm from each other.
-    ineq_constr4{end+1} = f_Jnn2(Tj(femurOr.r,1) - Tj(handOr.r,1));
-    ineq_constr4{end+1} = f_Jnn2(Tj(femurOr.l,1) - Tj(handOr.l,1));
+    Qconstr = f_Jnn2(Tj(femurOr.r,1) - Tj(handOr.r,1));
+    ineq_constr(ctIneq:ctIneq+length(Qconstr)-1) = Qconstr;
+    ineq_constr_index(ctIneq:ctIneq+length(Qconstr)-1) = 4;
+    ctIneq = ctIneq + length(Qconstr);
+    Qconstr = f_Jnn2(Tj(femurOr.l,1) - Tj(handOr.l,1));
+    ineq_constr(ctIneq:ctIneq+length(Qconstr)-1) = Qconstr;
+    ineq_constr_index(ctIneq:ctIneq+length(Qconstr)-1) = 4;
+    ctIneq = ctIneq + length(Qconstr);
     % Origins tibia (transv plane) at minimum 11 cm from each other.
-    ineq_constr5{end+1} = f_Jnn2(Tj(tibiaOr.r,1) - Tj(tibiaOr.l,1));
+    Qconstr = f_Jnn2(Tj(tibiaOr.r,1) - Tj(tibiaOr.l,1));
+    ineq_constr(ctIneq:ctIneq+length(Qconstr)-1) = Qconstr;
+    ineq_constr_index(ctIneq:ctIneq+length(Qconstr)-1) = 5;
+    ctIneq = ctIneq + length(Qconstr);
     % Origins toes (transv plane) at minimum 10 cm from each other.
-    ineq_constr6{end+1} = f_Jnn2(Tj(toesOr.r,1) - Tj(toesOr.l,1));
-    
+    Qconstr = f_Jnn2(Tj(toesOr.r,1) - Tj(toesOr.l,1));
+    ineq_constr(ctIneq:ctIneq+length(Qconstr)-1) = Qconstr;
+    ineq_constr_index(ctIneq:ctIneq+length(Qconstr)-1) = 6;
+    ctIneq = ctIneq + length(Qconstr);
+    % inequality constraint on exoskeleton moments
+    if S.OptTexo_Ankle.Bool
+        Qconstr = Texok(1).*Qskj_nsc(jointi.ankle.l,j+1);
+        ineq_constr(ctIneq:ctIneq+length(Qconstr)-1) = Qconstr;
+        ineq_constr_index(ctIneq:ctIneq+length(Qconstr)-1) = 7;
+        ctIneq = ctIneq + length(Qconstr);
+        Qconstr = Texok(2).*Qskj_nsc(jointi.ankle.r,j+1);
+        ineq_constr(ctIneq:ctIneq+length(Qconstr)-1) = Qconstr;
+        ineq_constr_index(ctIneq:ctIneq+length(Qconstr)-1) = 7;
+        ctIneq = ctIneq + length(Qconstr);
+    elseif S.OptTexo_AnkleKneeHip.Bool
+        iVect = [jointi.ankle.l jointi.ankle.r jointi.knee.l jointi.knee.r , ...
+            jointi.hip.l jointi.hip.r];
+        for iv = 1:6
+            Qconstr = Texok(iv).*Qskj_nsc(iVect(iv),j+1);
+            ineq_constr(ctIneq:ctIneq+length(Qconstr)-1) = Qconstr;
+            ineq_constr_index(ctIneq:ctIneq+length(Qconstr)-1) = 7+iv-1;
+            ctIneq = ctIneq + length(Qconstr);
+        end        
+    end
 end % End loop over collocation points
-eq_constr = vertcat(eq_constr{:});
-ineq_constr1 = vertcat(ineq_constr1{:});
-ineq_constr2 = vertcat(ineq_constr2{:});
-ineq_constr3 = vertcat(ineq_constr3{:});
-ineq_constr4 = vertcat(ineq_constr4{:});
-ineq_constr5 = vertcat(ineq_constr5{:});
-ineq_constr6 = vertcat(ineq_constr6{:});
+eq_constrV = vertcat(eq_constr{:});
 
 % Casadi function to get constraints and objective
 f_coll = Function('f_coll',{tfk,ak,aj,FTtildek,FTtildej,Qsk,Qsj,Qdotsk,...
     Qdotsj,a_ak,a_aj,a_mtpk,a_mtpj,vAk,e_ak,e_mtpk,dFTtildej,Aj,Texok},...
-    {eq_constr,ineq_constr1,ineq_constr2,ineq_constr3,ineq_constr4,...
-    ineq_constr5,ineq_constr6,J});
+    {eq_constrV,ineq_constr,J});
 % assign NLP problem to multiple cores
 f_coll_map = f_coll.map(N,S.parallelMode,S.NThreads);
-[coll_eq_constr, coll_ineq_constr1, coll_ineq_constr2, coll_ineq_constr3,...
-    coll_ineq_constr4, coll_ineq_constr5, coll_ineq_constr6, Jall] = f_coll_map(tf,...
+[coll_eq_constr, coll_ineq_constr, Jall] = f_coll_map(tf,...
     a(:,1:end-1), a_col, FTtilde(:,1:end-1), FTtilde_col, Qs(:,1:end-1), ...
     Qs_col, Qdots(:,1:end-1), Qdots_col, a_a(:,1:end-1), a_a_col, ...
     a_mtp(:,1:end-1), a_mtp_col, vA, e_a, e_mtp, dFTtilde_col, A_col,ExoVect);
-% constrains
+% equality constrains
 opti.subject_to(coll_eq_constr == 0);
-opti.subject_to(coll_ineq_constr1(:) >= 0);
-opti.subject_to(coll_ineq_constr2(:) <= 1/tact);
-opti.subject_to(S.Constr.calcn.^2 < coll_ineq_constr3(:) < 4); % origin calcaneus
-opti.subject_to(0.0324 < coll_ineq_constr4(:) < 4); % arms
-opti.subject_to(S.Constr.tibia.^2 < coll_ineq_constr5(:) < 4); % origin tibia minimum x cm away from each other
-opti.subject_to(S.Constr.toes.^2   < coll_ineq_constr6(:) < 4); % origins toes minimum x cm away from each other
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% inequality constraints (logical indexing not possible in MX arrays)
+cSel = coll_ineq_constr(find(ineq_constr_index == 1),:); % activation dyanmics
+opti.subject_to(cSel(:)  >= 0);
+cSel = coll_ineq_constr(find(ineq_constr_index == 2),:); % deactivation dyanmics
+opti.subject_to(cSel(:)  <= 1/tact);
+cSel = coll_ineq_constr(find(ineq_constr_index == 3),:); % origin calcaneus
+opti.subject_to(S.Constr.calcn.^2 < cSel(:) < 4);
+cSel = coll_ineq_constr(find(ineq_constr_index == 4),:); % arms
+opti.subject_to(0.0324 < cSel(:) < 4);
+cSel = coll_ineq_constr(find(ineq_constr_index == 5),:); % origin tibia minimum x cm away from each other
+opti.subject_to(S.Constr.tibia.^2 < cSel(:) < 4);
+cSel = coll_ineq_constr(find(ineq_constr_index == 6),:); % origins toes minimum x cm away from each other
+opti.subject_to(S.Constr.toes.^2 < cSel(:) < 4);
+if S.OptTexo_Ankle.Bool         % bound on exoskeleton power
+    cSel = coll_ineq_constr(find(ineq_constr_index == 7),:); % exoskeleton power
+    opti.subject_to(S.OptTexo_Ankle.Pbound(1) < cSel(:) < S.OptTexo_Ankle.Pbound(2));
+elseif S.OptTexo_AnkleKneeHip.Bool
+    lb_ExoPower = [S.OptTexo_AnkleKneeHip.Pbound_Ankle(1)*ones(1,2) ,...
+        S.OptTexo_AnkleKneeHip.Pbound_Knee(1)*ones(1,2), ...
+        S.OptTexo_AnkleKneeHip.Pbound_Hip(1)*ones(1,2)];
+    ub_ExoPower = [S.OptTexo_AnkleKneeHip.Pbound_Ankle(2)*ones(1,2) ,...
+        S.OptTexo_AnkleKneeHip.Pbound_Knee(2)*ones(1,2), ...
+        S.OptTexo_AnkleKneeHip.Pbound_Hip(2)*ones(1,2)];
+    for iv = 1:6
+        cSel = coll_ineq_constr(find(ineq_constr_index == 7+iv-1),:); % exoskeleton power
+        opti.subject_to(lb_ExoPower(iv) < cSel(:) < ub_ExoPower(iv));
+    end
+end
+
 % Loop over mesh points
 for k=1:N
     % Variables within current mesh interval
@@ -736,6 +805,11 @@ setup.scaling = scaling;
 setup.guess = guess;
 
 %% Save the results
+% indicate that ExoVect is part of optimization results
+if S.OptTexo_Ankle.Bool
+    ExoVect = 'Optimization';
+end
+
 Outname = fullfile(OutFolder,[S.savename '.mat']);
 Sopt = S;
 save(Outname,'w_opt','stats','setup','Sopt','ExoVect');

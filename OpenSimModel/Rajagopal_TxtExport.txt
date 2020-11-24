@@ -1,0 +1,49 @@
+Export opensim model 
+ -- Bodies: -- 
+pelvis = new OpenSim::Body("pelvis",11.7770, Vec3(-0.0707, 0.0000, 0.0000), Inertia(0.1028, 0.0871, 0.0579, 0, 0, 0));
+femur_l = new OpenSim::Body("femur_l",9.3014, Vec3(0.0000, -0.1700, 0.0000), Inertia(0.1339, 0.0351, 0.1412, 0, 0, 0));
+femur_r = new OpenSim::Body("femur_r",9.3014, Vec3(0.0000, -0.1700, 0.0000), Inertia(0.1339, 0.0351, 0.1412, 0, 0, 0));
+tibia_l = new OpenSim::Body("tibia_l",3.7075, Vec3(0.0000, -0.1867, 0.0000), Inertia(0.0504, 0.0051, 0.0511, 0, 0, 0));
+tibia_r = new OpenSim::Body("tibia_r",3.7075, Vec3(0.0000, -0.1867, 0.0000), Inertia(0.0504, 0.0051, 0.0511, 0, 0, 0));
+patella_l = new OpenSim::Body("patella_l",0.0862, Vec3(0.0018, 0.0264, 0.0000), Inertia(0.0000, 0.0000, 0.0000, 0, 0, 0));
+patella_r = new OpenSim::Body("patella_r",0.0862, Vec3(0.0018, 0.0264, 0.0000), Inertia(0.0000, 0.0000, 0.0000, 0, 0, 0));
+talus_l = new OpenSim::Body("talus_l",0.1000, Vec3(0.0000, 0.0000, 0.0000), Inertia(0.0010, 0.0010, 0.0010, 0, 0, 0));
+talus_r = new OpenSim::Body("talus_r",0.1000, Vec3(0.0000, 0.0000, 0.0000), Inertia(0.0010, 0.0010, 0.0010, 0, 0, 0));
+calcn_l = new OpenSim::Body("calcn_l",1.2500, Vec3(0.1000, 0.0300, 0.0000), Inertia(0.0014, 0.0039, 0.0041, 0, 0, 0));
+calcn_r = new OpenSim::Body("calcn_r",1.2500, Vec3(0.1000, 0.0300, 0.0000), Inertia(0.0014, 0.0039, 0.0041, 0, 0, 0));
+toes_l = new OpenSim::Body("toes_l",0.2166, Vec3(0.0346, 0.0060, 0.0175), Inertia(0.0001, 0.0002, 0.0010, 0, 0, 0));
+toes_r = new OpenSim::Body("toes_r",0.2166, Vec3(0.0346, 0.0060, -0.0175), Inertia(0.0001, 0.0002, 0.0010, 0, 0, 0));
+torso = new OpenSim::Body("torso",26.8266, Vec3(-0.0300, 0.3200, 0.0000), Inertia(1.4745, 0.7555, 1.4314, 0, 0, 0));
+humerus_l = new OpenSim::Body("humerus_l",2.0325, Vec3(0.0000, -0.1645, 0.0000), Inertia(0.0119, 0.0041, 0.0134, 0, 0, 0));
+humerus_r = new OpenSim::Body("humerus_r",2.0325, Vec3(0.0000, -0.1645, 0.0000), Inertia(0.0119, 0.0041, 0.0134, 0, 0, 0));
+ulna_l = new OpenSim::Body("ulna_l",0.6075, Vec3(0.0000, -0.1205, 0.0000), Inertia(0.0030, 0.0006, 0.0032, 0, 0, 0));
+ulna_r = new OpenSim::Body("ulna_r",0.6075, Vec3(0.0000, -0.1205, 0.0000), Inertia(0.0030, 0.0006, 0.0032, 0, 0, 0));
+radius_l = new OpenSim::Body("radius_l",0.6075, Vec3(0.0000, -0.1205, 0.0000), Inertia(0.0030, 0.0006, 0.0032, 0, 0, 0));
+radius_r = new OpenSim::Body("radius_r",0.6075, Vec3(0.0000, -0.1205, 0.0000), Inertia(0.0030, 0.0006, 0.0032, 0, 0, 0));
+hand_l = new OpenSim::Body("hand_l",0.4575, Vec3(0.0000, -0.0681, 0.0000), Inertia(0.0009, 0.0005, 0.0013, 0, 0, 0));
+hand_r = new OpenSim::Body("hand_r",0.4575, Vec3(0.0000, -0.0681, 0.0000), Inertia(0.0009, 0.0005, 0.0013, 0, 0, 0));
+
+
+ -- Joints: -- 
+ground_pelvis = new CustomJoint ("ground_pelvis", *femur_r, Vec3(0.0000, 0.0000, 0.0000), Vec3(0.0000, 0.0000, 0.0000), *pelvis , Vec3(0.0000, 0.0000, 0.0000), Vec3(0.0000, 0.0000, 0.0000), st_ground_pelvis);
+hip_l = new CustomJoint ("hip_l", *femur_r, Vec3(-0.0563, -0.0785, -0.0773), Vec3(0.0000, 0.0000, 0.0000), *femur_l , Vec3(0.0000, 0.0000, 0.0000), Vec3(0.0000, 0.0000, 0.0000), st_hip_l);
+hip_r = new CustomJoint ("hip_r", *femur_r, Vec3(-0.0563, -0.0785, 0.0773), Vec3(0.0000, 0.0000, 0.0000), *femur_r , Vec3(0.0000, 0.0000, 0.0000), Vec3(0.0000, 0.0000, 0.0000), st_hip_r);
+walker_knee_l = new CustomJoint ("walker_knee_l", *femur_r, Vec3(-0.0081, -0.4080, 0.0027), Vec3(1.6416, -1.4462, 1.5708), *tibia_l , Vec3(-0.0081, -0.0035, 0.0015), Vec3(1.6416, -1.4462, 1.5708), st_walker_knee_l);
+walker_knee_r = new CustomJoint ("walker_knee_r", *femur_r, Vec3(-0.0081, -0.4080, -0.0027), Vec3(-1.6416, 1.4462, 1.5708), *tibia_r , Vec3(-0.0081, -0.0035, -0.0015), Vec3(-1.6416, 1.4462, 1.5708), st_walker_knee_r);
+patellofemoral_l = new CustomJoint ("patellofemoral_l", *femur_r, Vec3(-0.0081, -0.4080, 0.0027), Vec3(0.0000, 0.0000, 0.0000), *patella_l , Vec3(0.0000, 0.0000, 0.0000), Vec3(0.0000, 0.0000, 0.0000), st_patellofemoral_l);
+patellofemoral_r = new CustomJoint ("patellofemoral_r", *femur_r, Vec3(-0.0081, -0.4080, -0.0027), Vec3(0.0000, 0.0000, 0.0000), *patella_r , Vec3(0.0000, 0.0000, 0.0000), Vec3(0.0000, 0.0000, 0.0000), st_patellofemoral_r);
+ankle_l = new CustomJoint ("ankle_l", *femur_r, Vec3(-0.0100, -0.4000, 0.0000), Vec3(-0.1759, 0.1052, 0.0187), *talus_l , Vec3(0.0000, 0.0000, 0.0000), Vec3(-0.1759, 0.1052, 0.0187), st_ankle_l);
+ankle_r = new CustomJoint ("ankle_r", *femur_r, Vec3(-0.0100, -0.4000, 0.0000), Vec3(0.1759, -0.1052, 0.0187), *talus_r , Vec3(0.0000, 0.0000, 0.0000), Vec3(0.1759, -0.1052, 0.0187), st_ankle_r);
+subtalar_l = new CustomJoint ("subtalar_l", *femur_r, Vec3(-0.0488, -0.0420, -0.0079), Vec3(1.7682, -0.9062, 1.8196), *calcn_l , Vec3(0.0000, 0.0000, 0.0000), Vec3(1.7682, -0.9062, 1.8196), st_subtalar_l);
+subtalar_r = new CustomJoint ("subtalar_r", *femur_r, Vec3(-0.0488, -0.0420, 0.0079), Vec3(-1.7682, 0.9062, 1.8196), *calcn_r , Vec3(0.0000, 0.0000, 0.0000), Vec3(-1.7682, 0.9062, 1.8196), st_subtalar_r);
+mtp_l = new PinJoint ("mtp_l", *femur_r, Vec3(0.1788, -0.0020, -0.0011), Vec3(-3.1416, -0.6199, 0.0000), *toes_l , Vec3(0.0000, 0.0000, 0.0000), Vec3(-3.1416, -0.6199, 0.0000));
+mtp_r = new PinJoint ("mtp_r", *femur_r, Vec3(0.1788, -0.0020, 0.0011), Vec3(-3.1416, 0.6199, 0.0000), *toes_r , Vec3(0.0000, 0.0000, 0.0000), Vec3(-3.1416, 0.6199, 0.0000));
+back = new CustomJoint ("back", *femur_r, Vec3(-0.1007, 0.0815, 0.0000), Vec3(0.0000, 0.0000, 0.0000), *torso , Vec3(0.0000, 0.0000, 0.0000), Vec3(0.0000, 0.0000, 0.0000), st_back);
+acromial_l = new CustomJoint ("acromial_l", *femur_r, Vec3(0.0032, 0.3715, -0.1700), Vec3(0.0000, 0.0000, 0.0000), *humerus_l , Vec3(0.0000, 0.0000, 0.0000), Vec3(0.0000, 0.0000, 0.0000), st_acromial_l);
+acromial_r = new CustomJoint ("acromial_r", *femur_r, Vec3(0.0032, 0.3715, 0.1700), Vec3(0.0000, 0.0000, 0.0000), *humerus_r , Vec3(0.0000, 0.0000, 0.0000), Vec3(0.0000, 0.0000, 0.0000), st_acromial_r);
+elbow_l = new CustomJoint ("elbow_l", *femur_r, Vec3(0.0131, -0.2863, 0.0096), Vec3(0.0229, -0.2280, 0.0052), *ulna_l , Vec3(0.0000, 0.0000, 0.0000), Vec3(0.0229, -0.2280, 0.0052), st_elbow_l);
+elbow_r = new CustomJoint ("elbow_r", *femur_r, Vec3(0.0131, -0.2863, -0.0096), Vec3(-0.0229, 0.2280, 0.0052), *ulna_r , Vec3(0.0000, 0.0000, 0.0000), Vec3(-0.0229, 0.2280, 0.0052), st_elbow_r);
+radioulnar_l = new CustomJoint ("radioulnar_l", *femur_r, Vec3(-0.0067, -0.0130, -0.0261), Vec3(1.5688, -0.0564, 1.5361), *radius_l , Vec3(0.0000, 0.0000, 0.0000), Vec3(1.5688, -0.0564, 1.5361), st_radioulnar_l);
+radioulnar_r = new CustomJoint ("radioulnar_r", *femur_r, Vec3(-0.0067, -0.0130, 0.0261), Vec3(-1.5688, 0.0564, 1.5361), *radius_r , Vec3(0.0000, 0.0000, 0.0000), Vec3(-1.5688, 0.0564, 1.5361), st_radioulnar_r);
+radius_hand_l = new WeldJoint ("radius_hand_l", *femur_r, Vec3(-0.0088, -0.2358, -0.0136), Vec3(1.5708, 0.0000, 1.5708), *hand_l , Vec3(0.0000, 0.0000, 0.0000), Vec3(1.5708, 0.0000, 1.5708));
+radius_hand_r = new WeldJoint ("radius_hand_r", *femur_r, Vec3(-0.0088, -0.2358, 0.0136), Vec3(-1.5708, 0.0000, -1.5708), *hand_r , Vec3(0.0000, 0.0000, 0.0000), Vec3(-1.5708, 0.0000, -1.5708));
