@@ -36,7 +36,7 @@ S.ExternalFunc2  = 'PredSim_3D_Pog_s1_mtp_pp.dll';        % this one is with the
 S.ExoBool       = 0;    
 S.ExoScale      = 0;
 S.savename      = 'NoExo';
-f_PredSim_PoggenSee2020(S);
+f_PredSim_Gait92(S);
 
 % passive simulation
 S.DataSet       = 'PoggenSee2020_ExpPass';
@@ -45,7 +45,7 @@ S.ExternalFunc2 = 'SimExo_3D_ExportAll.dll';        % external function for post
 S.ExoBool       = 1;    
 S.ExoScale      = 1;
 S.savename      = 'Passive';
-f_PredSim_PoggenSee2020(S);
+f_PredSim_Gait92(S);
 
 % active simulation
 S.DataSet       = 'PoggenSee2020_Exp';
@@ -54,4 +54,4 @@ S.ExternalFunc2 = 'SimExo_3D_ExportAll.dll';        % external function for post
 S.ExoBool       = 1;    
 S.ExoScale      = 1;
 S.savename      = 'Active';
-f_PredSim_PoggenSee2020(S);
+f_PredSim_Gait92(S);

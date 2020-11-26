@@ -17,8 +17,9 @@ import casadi.*
 % OpenSim/Simbody C++ API. This external function is compiled as a dll from
 % which we create a Function instance using CasADi in MATLAB. More details
 % about the external function can be found in the documentation.
-pathmain        = pwd;
-[pathRepo,~,~]  = fileparts(pathmain);
+pathmain = pwd;
+[filepath,~,~] = fileparts(mfilename('fullpath');
+[pathRepo,~,~] = fileparts(filepath);
 addpath(genpath(pathRepo));
 % Loading external functions.
 setup.derivatives =  'AD'; % Algorithmic differentiation

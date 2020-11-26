@@ -50,7 +50,7 @@ SWadd = 0.13;
 S.Constr.calcn = 0.09 + SWadd;
 S.Constr.toes = 0.1 + SWadd;
 S.Constr.tibia = 0.11 + SWadd;
-f_PredSim_PoggenSee2020(S);
+f_PredSim_Gait92(S);
 
 % passive simulation
 S.DataSet       = 'PoggenSee2020_ExpPass';
@@ -63,7 +63,7 @@ SWadd = 0.15;
 S.Constr.calcn = 0.09 + SWadd;
 S.Constr.toes = 0.1 + SWadd;
 S.Constr.tibia = 0.11 + SWadd;
-f_PredSim_PoggenSee2020(S);
+f_PredSim_Gait92(S);
 
 % active simulation
 S.DataSet       = 'PoggenSee2020_Exp';
@@ -76,4 +76,4 @@ SWadd = 0.15;
 S.Constr.calcn = 0.09 + SWadd;
 S.Constr.toes = 0.1 + SWadd;
 S.Constr.tibia = 0.11 + SWadd;
-f_PredSim_PoggenSee2020(S);
+f_PredSim_Gait92(S);
