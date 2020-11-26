@@ -253,7 +253,7 @@ if exist(ResultsFile,'file')
     
     
     subplot(2,2,4); hold on;
-    plot(R.T_exo(:,2),'-','Color',Cs);
+    plot(x,R.T_exo(:,2),'-','Color',Cs);
     ylabel('Exo Moment [Nm]');  xlabel('% stride');
     title('Right');
     
@@ -268,41 +268,41 @@ if exist(ResultsFile,'file')
     iSubtalar = strcmp(R.colheaders.joints,'subtalar_angle_r');
     subplot(3,2,1)
     if boolActuation
-        plot(R.Exodiff_id(:,iAnkle),'-','Color',Cs); hold on;
+        plot(x,R.Exodiff_id(:,iAnkle),'-','Color',Cs); hold on;
     else
-        plot(R.T_exo(:,2),'-','Color',Cs); hold on;
+        plot(x,R.T_exo(:,2),'-','Color',Cs); hold on;
     end
     ylabel('Exo Moment - Ankle [Nm]');  xlabel('% stride');
     
     subplot(3,2,2);
     if boolActuation
-        plot(R.Exodiff_id(:,iSubtalar),'-','Color',Cs); hold on;
+        plot(x,R.Exodiff_id(:,iSubtalar),'-','Color',Cs); hold on;
     else
     end
     ylabel('Exo Moment- Subtalar [Nm]'); xlabel('% stride');
     
     subplot(3,2,3)
-    plot(R.Tid(:,iAnkle),'-','Color',Cs); hold on;
+    plot(x,R.Tid(:,iAnkle),'-','Color',Cs); hold on;
     ylabel('Ankle moment [Nm]'); xlabel('% stride');
     
     subplot(3,2,4)
-    plot(R.Tid(:,iSubtalar),'-','Color',Cs); hold on;
+    plot(x,R.Tid(:,iSubtalar),'-','Color',Cs); hold on;
     ylabel('Subtalar moment [Nm]'); xlabel('% stride');
     
     subplot(3,2,5)
     if boolActuation
-        plot(R.Tid(:,iAnkle)-R.Exodiff_id(:,iAnkle),'-','Color',Cs); hold on;
+        plot(x,R.Tid(:,iAnkle)-R.Exodiff_id(:,iAnkle),'-','Color',Cs); hold on;
     else
-        plot(R.Tid(:,iAnkle)-R.T_exo(:,2),'-','Color',Cs); hold on;
+        plot(x,R.Tid(:,iAnkle)-R.T_exo(:,2),'-','Color',Cs); hold on;
     end
     ylabel('Biological ankle moment [Nm]'); xlabel('% stride');
     title('Left');
     
     subplot(3,2,6)
     if boolActuation
-        plot(R.Tid(:,iSubtalar)-R.Exodiff_id(:,iSubtalar),'-','Color',Cs,'DisplayName',LegName); hold on;
+        plot(x,R.Tid(:,iSubtalar)-R.Exodiff_id(:,iSubtalar),'-','Color',Cs,'DisplayName',LegName); hold on;
     else
-        plot(R.Tid(:,iSubtalar),'-','Color',Cs,'DisplayName',LegName); hold on;
+        plot(x,R.Tid(:,iSubtalar),'-','Color',Cs,'DisplayName',LegName); hold on;
     end
     ylabel('Biological subtalar moment [Nm]'); xlabel('% stride');
     title('Left');
@@ -318,43 +318,43 @@ if exist(ResultsFile,'file')
     iGas = find(strcmp(R.colheaders.muscles,'lat_gas_r'));
     
     subplot(5,2,1)
-    plot(R.a(:,iSol),'-','Color',Cs); hold on; title('Soleus');
+    plot(x,R.a(:,iSol),'-','Color',Cs); hold on; title('Soleus');
     xlabel('% stride'); ylabel('activity');
     
     subplot(5,2,2)
-    plot(R.a(:,iGas),'-','Color',Cs); hold on; title('Gastrocnemius');
+    plot(x,R.a(:,iGas),'-','Color',Cs); hold on; title('Gastrocnemius');
     xlabel('% stride'); ylabel('activity');
     
     subplot(5,2,3)
-    plot(R.MetabB.Etot(:,iSol),'-','Color',Cs); hold on;
+    plot(x,R.MetabB.Etot(:,iSol),'-','Color',Cs); hold on;
     xlabel('% stride'); ylabel('Muscle metab power');
     
     subplot(5,2,4)
-    plot(R.MetabB.Etot(:,iGas),'-','Color',Cs); hold on;
+    plot(x,R.MetabB.Etot(:,iGas),'-','Color',Cs); hold on;
     xlabel('% stride'); ylabel('Muscle metab power (W)');
     
     subplot(5,2,5)
-    plot(R.lMtilde(:,iSol),'-','Color',Cs); hold on;
+    plot(x,R.lMtilde(:,iSol),'-','Color',Cs); hold on;
     xlabel('% stride'); ylabel('Norm fiber length');
     
     subplot(5,2,6)
-    plot(R.lMtilde(:,iGas),'-','Color',Cs); hold on;
+    plot(x,R.lMtilde(:,iGas),'-','Color',Cs); hold on;
     xlabel('% stride'); ylabel('Norm fiber length');
     
     subplot(5,2,7)
-    plot(R.MetabB.Wdot(:,iSol),'-','Color',Cs); hold on;
+    plot(x,R.MetabB.Wdot(:,iSol),'-','Color',Cs); hold on;
     xlabel('% stride'); ylabel('Wdot');
     
     subplot(5,2,8)
-    plot(R.MetabB.Wdot(:,iGas),'-','Color',Cs); hold on;
+    plot(x,R.MetabB.Wdot(:,iGas),'-','Color',Cs); hold on;
     xlabel('% stride'); ylabel('Wdot');
     
     subplot(5,2,9)
-    plot(R.FT(:,iSol),'-','Color',Cs); hold on;
+    plot(x,R.FT(:,iSol),'-','Color',Cs); hold on;
     xlabel('% stride'); ylabel('Norm muscle force');
     
     subplot(5,2,10)
-    plot(R.FT(:,iGas),'-','Color',Cs,'DisplayName',LegName); hold on;
+    plot(x,R.FT(:,iGas),'-','Color',Cs,'DisplayName',LegName); hold on;
     xlabel('% stride'); ylabel('Norm muscle force');
     
     if boolFirst
@@ -366,7 +366,7 @@ if exist(ResultsFile,'file')
     axes('parent', tab6);
     for i=1:6
         subplot(2,3,i);
-        l = plot(R.GRFs(:,i),'-','Color',Cs); hold on;
+        l = plot(x,R.GRFs(:,i),'-','Color',Cs); hold on;
         title(R.colheaders.GRF{i});
         xlabel('% stride');
     end
@@ -416,37 +416,37 @@ if exist(ResultsFile,'file')
     
     for i=1:4
         subplot(5,4,i)
-        plot(R.a(:,iM(i)),'-','Color',Cs); hold on; title(mVect{i});
+        plot(x,R.a(:,iM(i)),'-','Color',Cs); hold on; title(mVect{i});
         xlabel('% stride'); ylabel('activity');
         
         subplot(5,4,i+4)
-        plot(R.MetabB.Etot(:,iM(i)),'-','Color',Cs); hold on;
+        plot(x,R.MetabB.Etot(:,iM(i)),'-','Color',Cs); hold on;
         xlabel('% stride'); ylabel('Muscle metab power');
         
         subplot(5,4,i+8)
-        plot(R.lMtilde(:,iM(i)),'-','Color',Cs); hold on;
+        plot(x,R.lMtilde(:,iM(i)),'-','Color',Cs); hold on;
         xlabel('% stride'); ylabel('Norm fiber length');
         
         subplot(5,4,i+12)
-        plot(R.FT(:,iM(i)),'-','Color',Cs); hold on;
+        plot(x,R.FT(:,iM(i)),'-','Color',Cs); hold on;
         xlabel('% stride'); ylabel('Norm muscle force');
         
     end
     % plot (biological) joint moments
     subplot(5,4,17)
-    plot(R.Tid(:,strcmp(R.colheaders.joints,'ankle_angle_r')),'-','Color',Cs); hold on;
+    plot(x,R.Tid(:,strcmp(R.colheaders.joints,'ankle_angle_r')),'-','Color',Cs); hold on;
     ylabel('Ankle moment [Nm]'); xlabel('% stride');
     
     subplot(5,4,18)
-    plot(R.Tid(:,strcmp(R.colheaders.joints,'ankle_angle_r'))-R.T_exo(:,2),'-','Color',Cs); hold on;
+    plot(x,R.Tid(:,strcmp(R.colheaders.joints,'ankle_angle_r'))-R.T_exo(:,2),'-','Color',Cs); hold on;
     ylabel('Muscle ankle [Nm]'); xlabel('% stride');
     
     subplot(5,4,19)
-    plot(R.Tid(:,strcmp(R.colheaders.joints,'subtalar_angle_r')),'-','Color',Cs); hold on;
+    plot(x,R.Tid(:,strcmp(R.colheaders.joints,'subtalar_angle_r')),'-','Color',Cs); hold on;
     ylabel('subtalar moment [Nm]'); xlabel('% stride');
     
     subplot(5,4,20)
-    l = plot(R.Tid(:,strcmp(R.colheaders.joints,'mtp_angle_r')),'-','Color',Cs); hold on;
+    l = plot(x,R.Tid(:,strcmp(R.colheaders.joints,'mtp_angle_r')),'-','Color',Cs); hold on;
     ylabel('mtp moment [Nm]'); xlabel('% stride');
     l.DisplayName = LegName;
     if boolFirst

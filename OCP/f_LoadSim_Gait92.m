@@ -437,8 +437,8 @@ if S.OptTexo_Ankle.Bool
     ExoVect =reshape(w_opt(starti:starti+N*2-1),2,N);
     starti = starti + 2*N;
 elseif S.OptTexo_AnkleKneeHip.Bool
-    ExoVect =reshape(w_opt(starti:starti+N*2-1),6,N);
-    starti = starti + 6*N;    
+    ExoVect =reshape(w_opt(starti:starti+N*6-1),6,N);
+    starti = starti + 6*N;
 end
 if starti - 1 ~= length(w_opt)
     disp('error when extracting results')
@@ -570,18 +570,19 @@ Tau_passk_opt_all           = zeros(N,nq.all-nq.abs);
 if S.ExoBool == 1 && strcmp(ExoImplementation,'TorqueTibiaCalcn')
     Foutk_opt_Exo         = zeros(N,F1.nnz_out);
 end
+ExoZeroT = zeros(length(ExoVect(:,1)),1);
 
 for i = 1:N
     % ID moments
-    if F1.nnz_in == nq.all*3 + 2
+    if F1.nnz_in > nq.all*3 
         if S.ExoBool == 1 && strcmp(ExoImplementation,'TorqueTibiaCalcn')
             % compute torque with exoskeleton support
             [res2] = F1([Xk_Qs_Qdots_opt(i,:)';Xk_Qdotdots_opt(i,:)'; -ExoVect(:,i)]);
             [res2_or] = F([Xk_Qs_Qdots_opt(i,:)';Xk_Qdotdots_opt(i,:)'; -ExoVect(:,i)]); % ext func used in optimization
         end
         % compute torque without exoskeleton support
-        [res] = F1([Xk_Qs_Qdots_opt(i,:)';Xk_Qdotdots_opt(i,:)'; 0; 0]);
-        [res_or] = F([Xk_Qs_Qdots_opt(i,:)';Xk_Qdotdots_opt(i,:)'; 0; 0]); % ext func used in optimization
+        [res] = F1([Xk_Qs_Qdots_opt(i,:)';Xk_Qdotdots_opt(i,:)'; ExoZeroT]);
+        [res_or] = F([Xk_Qs_Qdots_opt(i,:)';Xk_Qdotdots_opt(i,:)';ExoZeroT]); % ext func used in optimization
     else
         [res] = F1([Xk_Qs_Qdots_opt(i,:)';Xk_Qdotdots_opt(i,:)']);
         [res_or] = F([Xk_Qs_Qdots_opt(i,:)';Xk_Qdotdots_opt(i,:)']); % ext func used in optimization
@@ -612,13 +613,13 @@ end
 for i = 1:d*N
     iMesh = ceil(i/d);
     % inverse dynamics
-    if F1.nnz_in == nq.all*3 + 2
+    if F1.nnz_in > nq.all*3 
         if S.ExoBool == 1 && strcmp(ExoImplementation,'TorqueTibiaCalcn')
             [res2] = F1([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)'; -ExoVect(:,iMesh)]);
             [res2_or] = F([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)'; -ExoVect(:,iMesh)]);
         end
-        [res] = F1([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)'; 0; 0]);
-        [res_or] = F([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)'; 0; 0]);
+        [res] = F1([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)'; ExoZeroT]);
+        [res_or] = F([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)'; ExoZeroT]);
     else
         [res] = F1([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)']);
         [res_or] = F([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)']);
@@ -647,12 +648,12 @@ Xk_Qdotdots_opt_all = zeros(N+1,size(q_opt_unsc_all.rad,2));
 out_res_opt_all = zeros(N+1,F1.nnz_out);
 ndof = size(q_opt_unsc_all.rad,2);
 for i = 1:N+1
-    if F1.nnz_in == ndof*3
+    if F1.nnz_in == nq.all*3 
         [res] = F1([Xk_Qs_Qdots_opt_all(i,:)';Xk_Qdotdots_opt_all(i,:)']);
         [res_or] = F([Xk_Qs_Qdots_opt_all(i,:)';Xk_Qdotdots_opt_all(i,:)']);
     else
-        [res] = F1([Xk_Qs_Qdots_opt_all(i,:)';Xk_Qdotdots_opt_all(i,:)'; 0; 0]);
-        [res_or] = F([Xk_Qs_Qdots_opt_all(i,:)';Xk_Qdotdots_opt_all(i,:)'; 0; 0]);
+        [res] = F1([Xk_Qs_Qdots_opt_all(i,:)';Xk_Qdotdots_opt_all(i,:)'; ExoZeroT]);
+        [res_or] = F([Xk_Qs_Qdots_opt_all(i,:)';Xk_Qdotdots_opt_all(i,:)'; ExoZeroT]);
     end
     out_res_opt_all(i,:) = full(res);
     out_res_opt_all(i,1:nq.all) = full(res_or(1:nq.all)); % ID moments based on original function (just to be sure)
@@ -1161,8 +1162,8 @@ if writeIKmotion
         COPR = zeros(nfr,3);    FR = zeros(nfr,3);  MR = zeros(nfr,3);
         COPL = zeros(nfr,3);    FL = zeros(nfr,3);  ML = zeros(nfr,3);
         for ind = 1:nfr
-            if F1.nnz_in == nq.all*3+2
-                res = full(F1([qdqdd(ind,:)'; qdd(ind,:)'; 0;0])); % torque L and R exo added
+            if F1.nnz_in > nq.all*3
+                res = full(F1([qdqdd(ind,:)'; qdd(ind,:)'; ExoZeroT])); % torque L and R exo added
             else
                 res = full(F1([qdqdd(ind,:)'; qdd(ind,:)'])); % normal implementation
             end

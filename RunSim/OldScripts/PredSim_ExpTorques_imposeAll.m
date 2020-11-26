@@ -17,7 +17,7 @@ S.IG_PelvisY = 0.896;   % subject 1 poggensee
 S.subject            = 's1_Poggensee';
 
 % output folder
-S.ResultsFolder     = 'ExpTorques_SW_Freq_Timing2';
+S.ResultsFolder     = 'ExpTorques_SW_Freq_Timing_lba001';
 
 % initial guess based on simulations without exoskeletons
 S.IGsel         = 2;        % initial guess identifier (1: quasi random, 2: data-based)
@@ -26,6 +26,11 @@ S.savename_ig   = 'NoExo';
 
 % select the CasadiFolder
 S.CasadiFunc_Folders = 'Casadi_s1Pog_mtp';
+
+% lower bound muscle activity
+S.Bounds.ActLower = 0.01;
+
+
 
 % stride frequency between 0.99 and 1.01
 S.Bounds.tf = [0.495 0.505];
