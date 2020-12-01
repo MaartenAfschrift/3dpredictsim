@@ -118,7 +118,7 @@ elseif strcmp(ExtF,'PredSim_3D_GRF.dll') && isfield(S,'AFO_stiffness')
     % elastic ankle exoskeletons
     disp('Post processing of passive AFO as in Nuckols - ultrasound paper');
     ExoImplementation = 'Nuckols2019';
-elseif F.nnz_in == nq.all*3+6 
+elseif F.nnz_in == nq.all*3+6
     % typtical implementation when simulation with ankle-knee-hip
     % exoskeleton
     ExoImplementation = 'TorqueTibiaCalcn';
@@ -327,7 +327,7 @@ else
 end
 
 %% Exoskeleton torque (needed to process old simulation files)
-if ~exist('ExoVect','var')    
+if ~exist('ExoVect','var')
     load(Outname,'ExoControl');
     if ~isempty(ExoControl)
         ExoVect = [ExoControl.Tankle_l; ExoControl.Tankle_r];
@@ -443,6 +443,7 @@ end
 if starti - 1 ~= length(w_opt)
     disp('error when extracting results')
 end
+
 % Combine results at mesh and collocation points
 a_mesh_col_opt=zeros(N*(d+1)+1,NMuscle);
 a_mesh_col_opt(1:(d+1):end,:)= a_opt;
@@ -574,7 +575,7 @@ ExoZeroT = zeros(length(ExoVect(:,1)),1);
 
 for i = 1:N
     % ID moments
-    if F1.nnz_in > nq.all*3 
+    if F1.nnz_in > nq.all*3
         if S.ExoBool == 1 && strcmp(ExoImplementation,'TorqueTibiaCalcn')
             % compute torque with exoskeleton support
             [res2] = F1([Xk_Qs_Qdots_opt(i,:)';Xk_Qdotdots_opt(i,:)'; -ExoVect(:,i)]);
@@ -613,7 +614,7 @@ end
 for i = 1:d*N
     iMesh = ceil(i/d);
     % inverse dynamics
-    if F1.nnz_in > nq.all*3 
+    if F1.nnz_in > nq.all*3
         if S.ExoBool == 1 && strcmp(ExoImplementation,'TorqueTibiaCalcn')
             [res2] = F1([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)'; -ExoVect(:,iMesh)]);
             [res2_or] = F([Xj_Qs_Qdots_opt(i,:)';Xj_Qdotdots_opt(i,:)'; -ExoVect(:,iMesh)]);
@@ -648,7 +649,7 @@ Xk_Qdotdots_opt_all = zeros(N+1,size(q_opt_unsc_all.rad,2));
 out_res_opt_all = zeros(N+1,F1.nnz_out);
 ndof = size(q_opt_unsc_all.rad,2);
 for i = 1:N+1
-    if F1.nnz_in == nq.all*3 
+    if F1.nnz_in == nq.all*3
         [res] = F1([Xk_Qs_Qdots_opt_all(i,:)';Xk_Qdotdots_opt_all(i,:)']);
         [res_or] = F([Xk_Qs_Qdots_opt_all(i,:)';Xk_Qdotdots_opt_all(i,:)']);
     else
@@ -793,61 +794,67 @@ end
 
 
 %% Reconstruct full gait cycle
-% We reconstruct the full gait cycle from the simulated half gait cycle
-% Identify heel strike
-threshold = 20; % there is foot-ground contact above the threshold
-if exist('HS1','var')
-    clear HS1
-end
 
-% increase threshold untill you have at least on frame above the threshold
-nFramesBelow= sum(GRFk_opt(:,2)<threshold);
-while nFramesBelow == 0
-    threshold = threshold + 1;
+if S.Symmetric
+    % We reconstruct the full gait cycle from the simulated half gait cycle
+    % Identify heel strike
+    threshold = 20; % there is foot-ground contact above the threshold
+    if exist('HS1','var')
+        clear HS1
+    end
+    
+    % increase threshold untill you have at least on frame above the threshold
     nFramesBelow= sum(GRFk_opt(:,2)<threshold);
-end
-if threshold <100
-    phase_tran_tgridi = find(GRFk_opt(:,2)<threshold,1,'last');
-else
-    % heelstrike is in between left and right leg simulation
-    if threshold >100 && GRFk_opt(end,5)<20
+    while nFramesBelow == 0
+        threshold = threshold + 1;
+        nFramesBelow= sum(GRFk_opt(:,2)<threshold);
+    end
+    if threshold <100
         phase_tran_tgridi = find(GRFk_opt(:,2)<threshold,1,'last');
     else
-        % heelstrike is on the left leg
-        phase_tran_tgridi =[];
-        threshold = 20;
+        % heelstrike is in between left and right leg simulation
+        if threshold >100 && GRFk_opt(end,5)<20
+            phase_tran_tgridi = find(GRFk_opt(:,2)<threshold,1,'last');
+        else
+            % heelstrike is on the left leg
+            phase_tran_tgridi =[];
+            threshold = 20;
+        end
     end
-end
-if ~isempty(phase_tran_tgridi)
-    if phase_tran_tgridi == N
-        temp_idx = find(GRFk_opt(:,2)>threshold,1,'first');
-        if ~isempty(temp_idx)
-            if temp_idx-1 ~= 0 && ...
-                    find(GRFk_opt(temp_idx-1,2)<threshold)
-                phase_tran_tgridi_t = temp_idx;
-                IC1i = phase_tran_tgridi_t;
+    if ~isempty(phase_tran_tgridi)
+        if phase_tran_tgridi == N
+            temp_idx = find(GRFk_opt(:,2)>threshold,1,'first');
+            if ~isempty(temp_idx)
+                if temp_idx-1 ~= 0 && ...
+                        find(GRFk_opt(temp_idx-1,2)<threshold)
+                    phase_tran_tgridi_t = temp_idx;
+                    IC1i = phase_tran_tgridi_t;
+                    HS1 = 'r';
+                end
+            else
+                IC1i = phase_tran_tgridi + 1;
                 HS1 = 'r';
             end
         else
             IC1i = phase_tran_tgridi + 1;
             HS1 = 'r';
         end
-    else
-        IC1i = phase_tran_tgridi + 1;
-        HS1 = 'r';
     end
-end
-if ~exist('HS1','var')
-    % Check if heel strike is on the left side
-    phase_tran_tgridi = find(GRFk_opt(:,5)<threshold,1,'last');
-    if phase_tran_tgridi == N
-        temp_idx = find(GRFk_opt(:,5)>threshold,1,'first');
-        if ~isempty(temp_idx)
-            if temp_idx-1 ~= 0 && ...
-                    find(GRFk_opt(temp_idx-1,5)<threshold)
-                phase_tran_tgridi_t = temp_idx;
-                IC1i = phase_tran_tgridi_t;
-                HS1 = 'l';
+    if ~exist('HS1','var')
+        % Check if heel strike is on the left side
+        phase_tran_tgridi = find(GRFk_opt(:,5)<threshold,1,'last');
+        if phase_tran_tgridi == N
+            temp_idx = find(GRFk_opt(:,5)>threshold,1,'first');
+            if ~isempty(temp_idx)
+                if temp_idx-1 ~= 0 && ...
+                        find(GRFk_opt(temp_idx-1,5)<threshold)
+                    phase_tran_tgridi_t = temp_idx;
+                    IC1i = phase_tran_tgridi_t;
+                    HS1 = 'l';
+                else
+                    IC1i = phase_tran_tgridi + 1;
+                    HS1 = 'l';
+                end
             else
                 IC1i = phase_tran_tgridi + 1;
                 HS1 = 'l';
@@ -856,257 +863,269 @@ if ~exist('HS1','var')
             IC1i = phase_tran_tgridi + 1;
             HS1 = 'l';
         end
-    else
-        IC1i = phase_tran_tgridi + 1;
-        HS1 = 'l';
     end
-end
-
-% GRFk_opt is at mesh points starting from k=2, we thus add 1 to IC1i
-% for the states
-if phase_tran_tgridi ~= N
-    IC1i_c = IC1i;
-    IC1i_s = IC1i + 1;
-end
-
-% Qs
-Qs_GC = zeros(N*2,size(q_opt_unsc.deg,2));
-Qs_GC(1:N-IC1i_s+1,:) = q_opt_unsc.deg(IC1i_s:end,:);
-Qs_GC(N-IC1i_s+2:N-IC1i_s+1+N,QsSymA) = q_opt_unsc.deg(1:end,QsSymB);
-Qs_GC(N-IC1i_s+2:N-IC1i_s+1+N,QsOpp) = -q_opt_unsc.deg(1:end,QsOpp);
-Qs_GC(N-IC1i_s+2:N-IC1i_s+1+N,jointi.pelvis.tx) = ...
-    q_opt_unsc.deg(1:end,jointi.pelvis.tx) + ...
-    q_opt_unsc_all.deg(end,jointi.pelvis.tx);
-Qs_GC(N-IC1i_s+2+N:2*N,:) = q_opt_unsc.deg(1:IC1i_s-1,:);
-Qs_GC(N-IC1i_s+2+N:2*N,jointi.pelvis.tx) = ...
-    q_opt_unsc.deg(1:IC1i_s-1,jointi.pelvis.tx) + ...
-    2*q_opt_unsc_all.deg(end,jointi.pelvis.tx);
-% If the first heel strike was on the left foot then we invert so that
-% we always start with the right foot, for analysis purpose
-if strcmp(HS1,'l')
-    Qs_GC(:,QsSymA_ptx)  = Qs_GC(:,QsSymB_ptx);
-    Qs_GC(:,QsOpp)       = -Qs_GC(:,QsOpp);
-end
-temp_Qs_GC_pelvis_tx = Qs_GC(1,jointi.pelvis.tx);
-Qs_GC(:,jointi.pelvis.tx) = Qs_GC(:,jointi.pelvis.tx)-...
-    temp_Qs_GC_pelvis_tx;
-
-% Qdots
-Qdots_GC = zeros(N*2,size(Qs_GC,2));
-Qdots_GC(1:N-IC1i_s+1,:) = qdot_opt_unsc.deg(IC1i_s:end,:);
-Qdots_GC(N-IC1i_s+2:N-IC1i_s+1+N,QsSymA_ptx) = ...
-    qdot_opt_unsc.deg(1:end,QsSymB_ptx);
-Qdots_GC(N-IC1i_s+2:N-IC1i_s+1+N,QsOpp) = ...
-    -qdot_opt_unsc.deg(1:end,QsOpp);
-Qdots_GC(N-IC1i_s+2+N:2*N,:) = qdot_opt_unsc.deg(1:IC1i_s-1,:);
-% If the first heel strike was on the left foot then we invert so that
-% we always start with the right foot, for analysis purpose
-if strcmp(HS1,'l')
-    Qdots_GC(:,QsSymA_ptx) = Qdots_GC(:,QsSymB_ptx);
-    Qdots_GC(:,QsOpp) = -Qdots_GC(:,QsOpp);
-end
-
-% Qdotdots
-Qdotdots_GC = zeros(N*2,size(Qs_opt,2));
-Qdotdots_GC(1:N-IC1i_c+1,:) = Xk_Qdotdots_opt(IC1i_c:end,:);
-Qdotdots_GC(N-IC1i_c+2:N-IC1i_c+1+N,QsSymA_ptx) = ...
-    Xk_Qdotdots_opt(1:end,QsSymB_ptx);
-Qdotdots_GC(N-IC1i_c+2:N-IC1i_c+1+N,QsOpp) = ...
-    -Xk_Qdotdots_opt(1:end,QsOpp);
-Qdotdots_GC(N-IC1i_c+2+N:2*N,:) = Xk_Qdotdots_opt(1:IC1i_c-1,:);
-% If the first heel strike was on the left foot then we invert so that
-% we always start with the right foot, for analysis purpose
-if strcmp(HS1,'l')
-    Qdotdots_GC(:,QsSymA_ptx) = Qdotdots_GC(:,QsSymB_ptx);
-    Qdotdots_GC(:,QsOpp) = -Qdotdots_GC(:,QsOpp);
-end
-
-
-% Ground reaction forces
-GRFs_opt = zeros(N*2,NGRF);
-GRFs_opt(1:N-IC1i_c+1,:) = GRFk_opt(IC1i_c:end,1:6);
-GRFs_opt(N-IC1i_c+2:N-IC1i_c+1+N,:) = GRFk_opt(1:end,[4:6,1:3]);
-GRFs_opt(N-IC1i_c+2:N-IC1i_c+1+N,[3,6]) = ...
-    -GRFs_opt(N-IC1i_c+2:N-IC1i_c+1+N,[3,6]);
-GRFs_opt(N-IC1i_c+2+N:2*N,:) = GRFk_opt(1:IC1i_c-1,1:6);
-GRFs_opt = GRFs_opt./(body_weight/100);
-% If the first heel strike was on the left foot then we invert so that
-% we always start with the right foot, for analysis purpose
-if strcmp(HS1,'l')
-    GRFs_opt(:,[4:6,1:3]) = GRFs_opt(:,:);
-    GRFs_opt(:,[3,6]) = -GRFs_opt(:,[3,6]);
-end
-
-% Joint torques
-Ts_opt = zeros(N*2,size(Qs_opt,2));
-Ts_opt(1:N-IC1i_c+1,1:nq.all) = Foutk_opt(IC1i_c:end,1:nq.all);
-Ts_opt(N-IC1i_c+2:N-IC1i_c+1+N,QsSymA_ptx) = Foutk_opt(1:end,QsSymB_ptx);
-Ts_opt(N-IC1i_c+2:N-IC1i_c+1+N,QsOpp) = -Foutk_opt(1:end,QsOpp);
-Ts_opt(N-IC1i_c+2+N:2*N,1:nq.all) = Foutk_opt(1:IC1i_c-1,1:nq.all);
-% If the first heel strike was on the left foot then we invert so that
-% we always start with the right foot, for analysis purpose
-if strcmp(HS1,'l')
-    Ts_opt(:,QsSymA_ptx) = Ts_opt(:,QsSymB_ptx);
-    Ts_opt(:,QsOpp) = -Ts_opt(:,QsOpp);
-end
-Ts_opt = Ts_opt./body_mass;
-
-% Muscle-Tendon Forces
-orderMusInv = [NMuscle/2+1:NMuscle,1:NMuscle/2];
-FTtilde_GC = zeros(N*2,NMuscle);
-FTtilde_GC(1:N-IC1i_s+1,:) = FTtilde_opt_unsc(IC1i_s:end,:);
-FTtilde_GC(N-IC1i_s+2:N-IC1i_s+1+N,:) = ...
-    FTtilde_opt_unsc(1:end,orderMusInv);
-FTtilde_GC(N-IC1i_s+2+N:2*N,:) = FTtilde_opt_unsc(1:IC1i_s-1,:);
-% If the first heel strike was on the left foot then we invert so that
-% we always start with the right foot, for analysis purpose
-if strcmp(HS1,'l')
-    FTtilde_GC(:,:) = FTtilde_GC(:,orderMusInv);
-end
-
-% Muscle activations
-Acts_GC = zeros(N*2,NMuscle);
-Acts_GC(1:N-IC1i_s+1,:) = a_opt_unsc(IC1i_s:end,:);
-Acts_GC(N-IC1i_s+2:N-IC1i_s+1+N,:) = a_opt_unsc(1:end,orderMusInv);
-Acts_GC(N-IC1i_s+2+N:2*N,:) = a_opt_unsc(1:IC1i_s-1,:);
-% If the first heel strike was on the left foot then we invert so that
-% we always start with the right foot, for analysis purpose
-if strcmp(HS1,'l')
-    Acts_GC(:,:) = Acts_GC(:,orderMusInv);
-end
-
-% Time derivative of muscle-tendon force
-dFTtilde_GC = zeros(N*2,NMuscle);
-dFTtilde_GC(1:N-IC1i_c+1,:) = dFTtilde_opt_unsc(IC1i_c:end,:);
-dFTtilde_GC(N-IC1i_c+2:N-IC1i_c+1+N,:) = ...
-    dFTtilde_opt_unsc(1:end,orderMusInv);
-dFTtilde_GC(N-IC1i_c+2+N:2*N,:) = dFTtilde_opt_unsc(1:IC1i_c-1,:);
-% If the first heel strike was on the left foot then we invert so that
-% we always start with the right foot, for analysis purpose
-if strcmp(HS1,'l')
-    dFTtilde_GC(:,:) = dFTtilde_GC(:,orderMusInv);
-end
-
-% Muscle excitations
-vA_GC = zeros(N*2,NMuscle);
-vA_GC(1:N-IC1i_c+1,:) = vA_opt_unsc(IC1i_c:end,:);
-vA_GC(N-IC1i_c+2:N-IC1i_c+1+N,:) = vA_opt_unsc(1:end,orderMusInv);
-vA_GC(N-IC1i_c+2+N:2*N,:) = vA_opt_unsc(1:IC1i_c-1,:);
-% If the first heel strike was on the left foot then we invert so that
-% we always start with the right foot, for analysis purpose
-if strcmp(HS1,'l')
-    vA_GC(:,:) = vA_GC(:,orderMusInv);
-end
-e_GC = computeExcitationRaasch(Acts_GC,vA_GC,...
-    ones(1,NMuscle)*tdeact,ones(1,NMuscle)*tact);
-
-% Arm activations
-orderArmInv = [jointi.sh_flex.r:jointi.sh_rot.r,...
-    jointi.sh_flex.l:jointi.sh_rot.l,...
-    jointi.elb.r,jointi.elb.l]-jointi.sh_flex.l+1;
-a_a_GC = zeros(N*2,nq.arms);
-a_a_GC(1:N-IC1i_s+1,:) = a_a_opt_unsc(IC1i_s:end,:);
-a_a_GC(N-IC1i_s+2:N-IC1i_s+1+N,:) = a_a_opt_unsc(1:end,orderArmInv);
-a_a_GC(N-IC1i_s+2+N:2*N,:) = a_a_opt_unsc(1:IC1i_s-1,:);
-% If the first heel strike was on the left foot then we invert so that
-% we always start with the right foot, for analysis purpose
-if strcmp(HS1,'l')
-    a_a_GC(:,:) = a_a_GC(:,orderArmInv);
-end
-
-% Mtp activations
-orderMtpInv = [jointi.mtp.r,jointi.mtp.l]-jointi.mtp.l+1;
-a_mtp_GC = zeros(N*2,nq.mtp);
-a_mtp_GC(1:N-IC1i_s+1,:) = a_mtp_opt_unsc(IC1i_s:end,:);
-a_mtp_GC(N-IC1i_s+2:N-IC1i_s+1+N,:) = a_mtp_opt_unsc(1:end,orderMtpInv);
-a_mtp_GC(N-IC1i_s+2+N:2*N,:) = a_mtp_opt_unsc(1:IC1i_s-1,:);
-% If the first heel strike was on the left foot then we invert so that
-% we always start with the right foot, for analysis purpose
-if strcmp(HS1,'l')
-    a_mtp_GC(:,:) = a_mtp_GC(:,orderMtpInv);
-end
-
-% Arm excitations
-e_a_GC = zeros(N*2,nq.arms);
-e_a_GC(1:N-IC1i_c+1,:) = e_a_opt_unsc(IC1i_c:end,:);
-e_a_GC(N-IC1i_c+2:N-IC1i_c+1+N,:) = e_a_opt_unsc(1:end,orderArmInv);
-e_a_GC(N-IC1i_c+2+N:2*N,:) = e_a_opt_unsc(1:IC1i_c-1,:);
-% If the first heel strike was on the left foot then we invert so that
-% we always start with the right foot, for analysis purpose
-if strcmp(HS1,'l')
-    e_a_GC(:,:) = e_a_GC(:,orderArmInv);
-end
-
-% Mtp excitations
-e_mtp_GC = zeros(N*2,nq.mtp);
-e_mtp_GC(1:N-IC1i_c+1,:) = e_mtp_opt_unsc(IC1i_c:end,:);
-e_mtp_GC(N-IC1i_c+2:N-IC1i_c+1+N,:) = e_mtp_opt_unsc(1:end,orderMtpInv);
-e_mtp_GC(N-IC1i_c+2+N:2*N,:) = e_mtp_opt_unsc(1:IC1i_c-1,:);
-% If the first heel strike was on the left foot then we invert so that
-% we always start with the right foot, for analysis purpose
-if strcmp(HS1,'l')
-    e_mtp_GC(:,:) = e_mtp_GC(:,orderMtpInv);
-end
-
-% ExoTorques
-T_exo_GC = zeros(N*2,2);
-T_exo_GC(1:N-IC1i_c+1,:) = ExoVect([1 2],IC1i_c:end)';
-T_exo_GC(N-IC1i_c+2:N-IC1i_c+1+N,:) = ExoVect([2 1],1:end)';
-T_exo_GC(N-IC1i_c+2+N:2*N,:) = ExoVect([1 2],1:IC1i_c-1)';
-dt_exoShift = IC1i_c.*nanmean(diff(tgrid));
-if strcmp(HS1,'l')
-    T_exo_GC = T_exo_GC(:,[2 1]);
-    dt_exoShift = dt_exoShift - tgrid(end);
-end
-
-% If exoskeleton is implemented as torque actuator
-% evaluate influence of ankle moment and subtalar moment
-if strcmp(ExoImplementation,'TorqueTibiaCalcn')
-    % get ID with exoskeleton as percentage of gait cycle
-    Ts_opt_Exo = zeros(N*2,size(Qs_opt,2));
-    Ts_opt_Exo(1:N-IC1i_c+1,1:nq.all) = Foutk_opt_Exo(IC1i_c:end,1:nq.all);
-    Ts_opt_Exo(N-IC1i_c+2:N-IC1i_c+1+N,QsSymA_ptx) = Foutk_opt_Exo(1:end,QsSymB_ptx); %
-    Ts_opt_Exo(N-IC1i_c+2:N-IC1i_c+1+N,QsOpp) = -Foutk_opt_Exo(1:end,QsOpp);
-    Ts_opt_Exo(N-IC1i_c+2+N:2*N,1:nq.all) = Foutk_opt_Exo(1:IC1i_c-1,1:nq.all);
+    
+    % GRFk_opt is at mesh points starting from k=2, we thus add 1 to IC1i
+    % for the states
+    if phase_tran_tgridi ~= N
+        IC1i_c = IC1i;
+        IC1i_s = IC1i + 1;
+    end
+    
+    
+    % Qs
+    Qs_GC = zeros(N*2,size(q_opt_unsc.deg,2));
+    Qs_GC(1:N-IC1i_s+1,:) = q_opt_unsc.deg(IC1i_s:end,:);
+    Qs_GC(N-IC1i_s+2:N-IC1i_s+1+N,QsSymA) = q_opt_unsc.deg(1:end,QsSymB);
+    Qs_GC(N-IC1i_s+2:N-IC1i_s+1+N,QsOpp) = -q_opt_unsc.deg(1:end,QsOpp);
+    Qs_GC(N-IC1i_s+2:N-IC1i_s+1+N,jointi.pelvis.tx) = ...
+        q_opt_unsc.deg(1:end,jointi.pelvis.tx) + ...
+        q_opt_unsc_all.deg(end,jointi.pelvis.tx);
+    Qs_GC(N-IC1i_s+2+N:2*N,:) = q_opt_unsc.deg(1:IC1i_s-1,:);
+    Qs_GC(N-IC1i_s+2+N:2*N,jointi.pelvis.tx) = ...
+        q_opt_unsc.deg(1:IC1i_s-1,jointi.pelvis.tx) + ...
+        2*q_opt_unsc_all.deg(end,jointi.pelvis.tx);
     % If the first heel strike was on the left foot then we invert so that
     % we always start with the right foot, for analysis purpose
     if strcmp(HS1,'l')
-        Ts_opt_Exo(:,QsSymA_ptx) = Ts_opt_Exo(:,QsSymB_ptx);
-        Ts_opt_Exo(:,QsOpp) = -Ts_opt_Exo(:,QsOpp);
+        Qs_GC(:,QsSymA_ptx)  = Qs_GC(:,QsSymB_ptx);
+        Qs_GC(:,QsOpp)       = -Qs_GC(:,QsOpp);
     end
-    Ts_opt_Exo = Ts_opt_Exo./body_mass;
-    % compute relative difference
-    TExo_Joint = Ts_opt - Ts_opt_Exo;
+    temp_Qs_GC_pelvis_tx = Qs_GC(1,jointi.pelvis.tx);
+    Qs_GC(:,jointi.pelvis.tx) = Qs_GC(:,jointi.pelvis.tx)-...
+        temp_Qs_GC_pelvis_tx;
+    
+    % Qdots
+    Qdots_GC = zeros(N*2,size(Qs_GC,2));
+    Qdots_GC(1:N-IC1i_s+1,:) = qdot_opt_unsc.deg(IC1i_s:end,:);
+    Qdots_GC(N-IC1i_s+2:N-IC1i_s+1+N,QsSymA_ptx) = ...
+        qdot_opt_unsc.deg(1:end,QsSymB_ptx);
+    Qdots_GC(N-IC1i_s+2:N-IC1i_s+1+N,QsOpp) = ...
+        -qdot_opt_unsc.deg(1:end,QsOpp);
+    Qdots_GC(N-IC1i_s+2+N:2*N,:) = qdot_opt_unsc.deg(1:IC1i_s-1,:);
+    % If the first heel strike was on the left foot then we invert so that
+    % we always start with the right foot, for analysis purpose
+    if strcmp(HS1,'l')
+        Qdots_GC(:,QsSymA_ptx) = Qdots_GC(:,QsSymB_ptx);
+        Qdots_GC(:,QsOpp) = -Qdots_GC(:,QsOpp);
+    end
+    
+    % Qdotdots
+    Qdotdots_GC = zeros(N*2,size(Qs_opt,2));
+    Qdotdots_GC(1:N-IC1i_c+1,:) = Xk_Qdotdots_opt(IC1i_c:end,:);
+    Qdotdots_GC(N-IC1i_c+2:N-IC1i_c+1+N,QsSymA_ptx) = ...
+        Xk_Qdotdots_opt(1:end,QsSymB_ptx);
+    Qdotdots_GC(N-IC1i_c+2:N-IC1i_c+1+N,QsOpp) = ...
+        -Xk_Qdotdots_opt(1:end,QsOpp);
+    Qdotdots_GC(N-IC1i_c+2+N:2*N,:) = Xk_Qdotdots_opt(1:IC1i_c-1,:);
+    % If the first heel strike was on the left foot then we invert so that
+    % we always start with the right foot, for analysis purpose
+    if strcmp(HS1,'l')
+        Qdotdots_GC(:,QsSymA_ptx) = Qdotdots_GC(:,QsSymB_ptx);
+        Qdotdots_GC(:,QsOpp) = -Qdotdots_GC(:,QsOpp);
+    end
+    
+    
+    % Ground reaction forces
+    GRFs_opt = zeros(N*2,NGRF);
+    GRFs_opt(1:N-IC1i_c+1,:) = GRFk_opt(IC1i_c:end,1:6);
+    GRFs_opt(N-IC1i_c+2:N-IC1i_c+1+N,:) = GRFk_opt(1:end,[4:6,1:3]);
+    GRFs_opt(N-IC1i_c+2:N-IC1i_c+1+N,[3,6]) = ...
+        -GRFs_opt(N-IC1i_c+2:N-IC1i_c+1+N,[3,6]);
+    GRFs_opt(N-IC1i_c+2+N:2*N,:) = GRFk_opt(1:IC1i_c-1,1:6);
+    GRFs_opt = GRFs_opt./(body_weight/100);
+    % If the first heel strike was on the left foot then we invert so that
+    % we always start with the right foot, for analysis purpose
+    if strcmp(HS1,'l')
+        GRFs_opt(:,[4:6,1:3]) = GRFs_opt(:,:);
+        GRFs_opt(:,[3,6]) = -GRFs_opt(:,[3,6]);
+    end
+    
+    % Joint torques
+    Ts_opt = zeros(N*2,size(Qs_opt,2));
+    Ts_opt(1:N-IC1i_c+1,1:nq.all) = Foutk_opt(IC1i_c:end,1:nq.all);
+    Ts_opt(N-IC1i_c+2:N-IC1i_c+1+N,QsSymA_ptx) = Foutk_opt(1:end,QsSymB_ptx);
+    Ts_opt(N-IC1i_c+2:N-IC1i_c+1+N,QsOpp) = -Foutk_opt(1:end,QsOpp);
+    Ts_opt(N-IC1i_c+2+N:2*N,1:nq.all) = Foutk_opt(1:IC1i_c-1,1:nq.all);
+    % If the first heel strike was on the left foot then we invert so that
+    % we always start with the right foot, for analysis purpose
+    if strcmp(HS1,'l')
+        Ts_opt(:,QsSymA_ptx) = Ts_opt(:,QsSymB_ptx);
+        Ts_opt(:,QsOpp) = -Ts_opt(:,QsOpp);
+    end
+    Ts_opt = Ts_opt./body_mass;
+    
+    % Muscle-Tendon Forces
+    orderMusInv = [NMuscle/2+1:NMuscle,1:NMuscle/2];
+    FTtilde_GC = zeros(N*2,NMuscle);
+    FTtilde_GC(1:N-IC1i_s+1,:) = FTtilde_opt_unsc(IC1i_s:end,:);
+    FTtilde_GC(N-IC1i_s+2:N-IC1i_s+1+N,:) = ...
+        FTtilde_opt_unsc(1:end,orderMusInv);
+    FTtilde_GC(N-IC1i_s+2+N:2*N,:) = FTtilde_opt_unsc(1:IC1i_s-1,:);
+    % If the first heel strike was on the left foot then we invert so that
+    % we always start with the right foot, for analysis purpose
+    if strcmp(HS1,'l')
+        FTtilde_GC(:,:) = FTtilde_GC(:,orderMusInv);
+    end
+    
+    % Muscle activations
+    Acts_GC = zeros(N*2,NMuscle);
+    Acts_GC(1:N-IC1i_s+1,:) = a_opt_unsc(IC1i_s:end,:);
+    Acts_GC(N-IC1i_s+2:N-IC1i_s+1+N,:) = a_opt_unsc(1:end,orderMusInv);
+    Acts_GC(N-IC1i_s+2+N:2*N,:) = a_opt_unsc(1:IC1i_s-1,:);
+    % If the first heel strike was on the left foot then we invert so that
+    % we always start with the right foot, for analysis purpose
+    if strcmp(HS1,'l')
+        Acts_GC(:,:) = Acts_GC(:,orderMusInv);
+    end
+    
+    % Time derivative of muscle-tendon force
+    dFTtilde_GC = zeros(N*2,NMuscle);
+    dFTtilde_GC(1:N-IC1i_c+1,:) = dFTtilde_opt_unsc(IC1i_c:end,:);
+    dFTtilde_GC(N-IC1i_c+2:N-IC1i_c+1+N,:) = ...
+        dFTtilde_opt_unsc(1:end,orderMusInv);
+    dFTtilde_GC(N-IC1i_c+2+N:2*N,:) = dFTtilde_opt_unsc(1:IC1i_c-1,:);
+    % If the first heel strike was on the left foot then we invert so that
+    % we always start with the right foot, for analysis purpose
+    if strcmp(HS1,'l')
+        dFTtilde_GC(:,:) = dFTtilde_GC(:,orderMusInv);
+    end
+    
+    % Muscle excitations
+    vA_GC = zeros(N*2,NMuscle);
+    vA_GC(1:N-IC1i_c+1,:) = vA_opt_unsc(IC1i_c:end,:);
+    vA_GC(N-IC1i_c+2:N-IC1i_c+1+N,:) = vA_opt_unsc(1:end,orderMusInv);
+    vA_GC(N-IC1i_c+2+N:2*N,:) = vA_opt_unsc(1:IC1i_c-1,:);
+    % If the first heel strike was on the left foot then we invert so that
+    % we always start with the right foot, for analysis purpose
+    if strcmp(HS1,'l')
+        vA_GC(:,:) = vA_GC(:,orderMusInv);
+    end
+    e_GC = computeExcitationRaasch(Acts_GC,vA_GC,...
+        ones(1,NMuscle)*tdeact,ones(1,NMuscle)*tact);
+    
+    % Arm activations
+    orderArmInv = [jointi.sh_flex.r:jointi.sh_rot.r,...
+        jointi.sh_flex.l:jointi.sh_rot.l,...
+        jointi.elb.r,jointi.elb.l]-jointi.sh_flex.l+1;
+    a_a_GC = zeros(N*2,nq.arms);
+    a_a_GC(1:N-IC1i_s+1,:) = a_a_opt_unsc(IC1i_s:end,:);
+    a_a_GC(N-IC1i_s+2:N-IC1i_s+1+N,:) = a_a_opt_unsc(1:end,orderArmInv);
+    a_a_GC(N-IC1i_s+2+N:2*N,:) = a_a_opt_unsc(1:IC1i_s-1,:);
+    % If the first heel strike was on the left foot then we invert so that
+    % we always start with the right foot, for analysis purpose
+    if strcmp(HS1,'l')
+        a_a_GC(:,:) = a_a_GC(:,orderArmInv);
+    end
+    
+    % Mtp activations
+    orderMtpInv = [jointi.mtp.r,jointi.mtp.l]-jointi.mtp.l+1;
+    a_mtp_GC = zeros(N*2,nq.mtp);
+    a_mtp_GC(1:N-IC1i_s+1,:) = a_mtp_opt_unsc(IC1i_s:end,:);
+    a_mtp_GC(N-IC1i_s+2:N-IC1i_s+1+N,:) = a_mtp_opt_unsc(1:end,orderMtpInv);
+    a_mtp_GC(N-IC1i_s+2+N:2*N,:) = a_mtp_opt_unsc(1:IC1i_s-1,:);
+    % If the first heel strike was on the left foot then we invert so that
+    % we always start with the right foot, for analysis purpose
+    if strcmp(HS1,'l')
+        a_mtp_GC(:,:) = a_mtp_GC(:,orderMtpInv);
+    end
+    
+    % Arm excitations
+    e_a_GC = zeros(N*2,nq.arms);
+    e_a_GC(1:N-IC1i_c+1,:) = e_a_opt_unsc(IC1i_c:end,:);
+    e_a_GC(N-IC1i_c+2:N-IC1i_c+1+N,:) = e_a_opt_unsc(1:end,orderArmInv);
+    e_a_GC(N-IC1i_c+2+N:2*N,:) = e_a_opt_unsc(1:IC1i_c-1,:);
+    % If the first heel strike was on the left foot then we invert so that
+    % we always start with the right foot, for analysis purpose
+    if strcmp(HS1,'l')
+        e_a_GC(:,:) = e_a_GC(:,orderArmInv);
+    end
+    
+    % Mtp excitations
+    e_mtp_GC = zeros(N*2,nq.mtp);
+    e_mtp_GC(1:N-IC1i_c+1,:) = e_mtp_opt_unsc(IC1i_c:end,:);
+    e_mtp_GC(N-IC1i_c+2:N-IC1i_c+1+N,:) = e_mtp_opt_unsc(1:end,orderMtpInv);
+    e_mtp_GC(N-IC1i_c+2+N:2*N,:) = e_mtp_opt_unsc(1:IC1i_c-1,:);
+    % If the first heel strike was on the left foot then we invert so that
+    % we always start with the right foot, for analysis purpose
+    if strcmp(HS1,'l')
+        e_mtp_GC(:,:) = e_mtp_GC(:,orderMtpInv);
+    end
+    
+    % ExoTorques
+    T_exo_GC = zeros(N*2,2);
+    T_exo_GC(1:N-IC1i_c+1,:) = ExoVect([1 2],IC1i_c:end)';
+    T_exo_GC(N-IC1i_c+2:N-IC1i_c+1+N,:) = ExoVect([2 1],1:end)';
+    T_exo_GC(N-IC1i_c+2+N:2*N,:) = ExoVect([1 2],1:IC1i_c-1)';
+    dt_exoShift = IC1i_c.*nanmean(diff(tgrid));
+    if strcmp(HS1,'l')
+        T_exo_GC = T_exo_GC(:,[2 1]);
+        dt_exoShift = dt_exoShift - tgrid(end);
+    end
+    
+    % If exoskeleton is implemented as torque actuator
+    % evaluate influence of ankle moment and subtalar moment
+    if strcmp(ExoImplementation,'TorqueTibiaCalcn')
+        % get ID with exoskeleton as percentage of gait cycle
+        Ts_opt_Exo = zeros(N*2,size(Qs_opt,2));
+        Ts_opt_Exo(1:N-IC1i_c+1,1:nq.all) = Foutk_opt_Exo(IC1i_c:end,1:nq.all);
+        Ts_opt_Exo(N-IC1i_c+2:N-IC1i_c+1+N,QsSymA_ptx) = Foutk_opt_Exo(1:end,QsSymB_ptx); %
+        Ts_opt_Exo(N-IC1i_c+2:N-IC1i_c+1+N,QsOpp) = -Foutk_opt_Exo(1:end,QsOpp);
+        Ts_opt_Exo(N-IC1i_c+2+N:2*N,1:nq.all) = Foutk_opt_Exo(1:IC1i_c-1,1:nq.all);
+        % If the first heel strike was on the left foot then we invert so that
+        % we always start with the right foot, for analysis purpose
+        if strcmp(HS1,'l')
+            Ts_opt_Exo(:,QsSymA_ptx) = Ts_opt_Exo(:,QsSymB_ptx);
+            Ts_opt_Exo(:,QsOpp) = -Ts_opt_Exo(:,QsOpp);
+        end
+        Ts_opt_Exo = Ts_opt_Exo./body_mass;
+        % compute relative difference
+        TExo_Joint = Ts_opt - Ts_opt_Exo;
+    end
+    
+    % Passive joint torques
+    Tau_pass_opt_inv = [jointi.hip_flex.r:jointi.hip_rot.r,...
+        jointi.hip_flex.l:jointi.hip_rot.l,...
+        jointi.knee.r,jointi.knee.l,jointi.ankle.r,jointi.ankle.l,...
+        jointi.subt.r,jointi.subt.l,jointi.mtp.r,jointi.mtp.l,...
+        jointi.trunk.ext:jointi.trunk.rot,...
+        jointi.sh_flex.r:jointi.sh_rot.r,...
+        jointi.sh_flex.l:jointi.sh_rot.l,...
+        jointi.elb.r,jointi.elb.l]-jointi.hip_flex.l+1;
+    Tau_pass_opt_GC = zeros(N*2,nq.all-nq.abs);
+    Tau_pass_opt_GC(1:N-IC1i_c+1,:) = Tau_passk_opt_all(IC1i_c:end,:);
+    Tau_pass_opt_GC(N-IC1i_c+2:N-IC1i_c+1+N,:) = ...
+        Tau_passk_opt_all(1:end,Tau_pass_opt_inv);
+    Tau_pass_opt_GC(N-IC1i_c+2+N:2*N,:) = Tau_passk_opt_all(1:IC1i_c-1,:);
+    % If the first heel strike was on the left foot then we invert so that
+    % we always start with the right foot, for analysis purpose
+    if strcmp(HS1,'l')
+        Tau_pass_opt_GC(:,Tau_pass_opt_inv) = Tau_pass_opt_GC(:,:);
+    end
+    
+    % Create .mot file for OpenSim GUI
+    q_opt_GUI_GC = zeros(2*N,1+nq.all+2);
+    q_opt_GUI_GC(1:N-IC1i_s+1,1) = tgrid(:,IC1i_s:end-1)';
+    q_opt_GUI_GC(N-IC1i_s+2:N-IC1i_s+1+N,1)  = tgrid(:,1:end-1)' + tgrid(end);
+    q_opt_GUI_GC(N-IC1i_s+2+N:2*N,1) = tgrid(:,1:IC1i_s-1)' + 2*tgrid(end);
+    q_opt_GUI_GC(:,2:end-2) = Qs_GC;
+    q_opt_GUI_GC(:,end-1:end) = 1.51*180/pi*ones(2*N,2); % pro_sup (locked)
+    q_opt_GUI_GC(:,1) = q_opt_GUI_GC(:,1)-q_opt_GUI_GC(1,1);
+    
+    
+elseif S.Periodic
+    % to Do: implement arrange results in gait cycle (should be easy)
+    
+    % (1) detect heelstrike
+    
+    % (2) extract states and controls
+    
+    
 end
 
-% Passive joint torques
-Tau_pass_opt_inv = [jointi.hip_flex.r:jointi.hip_rot.r,...
-    jointi.hip_flex.l:jointi.hip_rot.l,...
-    jointi.knee.r,jointi.knee.l,jointi.ankle.r,jointi.ankle.l,...
-    jointi.subt.r,jointi.subt.l,jointi.mtp.r,jointi.mtp.l,...
-    jointi.trunk.ext:jointi.trunk.rot,...
-    jointi.sh_flex.r:jointi.sh_rot.r,...
-    jointi.sh_flex.l:jointi.sh_rot.l,...
-    jointi.elb.r,jointi.elb.l]-jointi.hip_flex.l+1;
-Tau_pass_opt_GC = zeros(N*2,nq.all-nq.abs);
-Tau_pass_opt_GC(1:N-IC1i_c+1,:) = Tau_passk_opt_all(IC1i_c:end,:);
-Tau_pass_opt_GC(N-IC1i_c+2:N-IC1i_c+1+N,:) = ...
-    Tau_passk_opt_all(1:end,Tau_pass_opt_inv);
-Tau_pass_opt_GC(N-IC1i_c+2+N:2*N,:) = Tau_passk_opt_all(1:IC1i_c-1,:);
-% If the first heel strike was on the left foot then we invert so that
-% we always start with the right foot, for analysis purpose
-if strcmp(HS1,'l')
-    Tau_pass_opt_GC(:,Tau_pass_opt_inv) = Tau_pass_opt_GC(:,:);
-end
 
-% Create .mot file for OpenSim GUI
-q_opt_GUI_GC = zeros(2*N,1+nq.all+2);
-q_opt_GUI_GC(1:N-IC1i_s+1,1) = tgrid(:,IC1i_s:end-1)';
-q_opt_GUI_GC(N-IC1i_s+2:N-IC1i_s+1+N,1)  = tgrid(:,1:end-1)' + tgrid(end);
-q_opt_GUI_GC(N-IC1i_s+2+N:2*N,1) = tgrid(:,1:IC1i_s-1)' + 2*tgrid(end);
-q_opt_GUI_GC(:,2:end-2) = Qs_GC;
-q_opt_GUI_GC(:,end-1:end) = 1.51*180/pi*ones(2*N,2); % pro_sup (locked)
-q_opt_GUI_GC(:,1) = q_opt_GUI_GC(:,1)-q_opt_GUI_GC(1,1);
+
+
 if writeIKmotion
     pathOpenSim = [pathRepo,'/OpenSim'];
     addpath(genpath(pathOpenSim));

@@ -8,7 +8,7 @@
 clear all; close all; clc;
 import casadi.*
 ExtPoly = '_mtp';
-S.CasadiFunc_Folders = 'Casadi_s1Pog_mtp_Default';
+S.CasadiFunc_Folders = 'Casadi_s1Pog_mtp_Defaultb';
 subject              = 's1_Poggensee';
 if isfolder(S.CasadiFunc_Folders)
     error('Never changes the casadi functions in an existing folder, these functions are important to analyse optimization results (from the optimal states and controls');
@@ -612,3 +612,12 @@ save(fullfile(OutPath,'MassM.mat'),'MassM');
 % save default setup structure to verify this in the main function part
 SDefault = S;
 save('SDefault.mat','SDefault');
+
+
+
+% Debug new implementation
+MTnew = load('MTparamNew.mat');
+NamesNew= load('muscleNamesNew.mat');
+
+
+MTdiff = MTparameters_m-MTnew.MTparameters_m;

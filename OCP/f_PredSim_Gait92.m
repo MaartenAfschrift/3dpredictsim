@@ -18,7 +18,7 @@ import casadi.*
 % which we create a Function instance using CasADi in MATLAB. More details
 % about the external function can be found in the documentation.
 pathmain = pwd;
-[filepath,~,~] = fileparts(mfilename('fullpath');
+[filepath,~,~] = fileparts(mfilename('fullpath'));
 [pathRepo,~,~] = fileparts(filepath);
 addpath(genpath(pathRepo));
 % Loading external functions.
