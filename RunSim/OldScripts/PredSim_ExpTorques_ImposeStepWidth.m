@@ -17,12 +17,15 @@ S.IG_PelvisY = 0.896;   % subject 1 poggensee
 S.subject            = 's1_Poggensee';
 
 % output folder
-S.ResultsFolder     = 'ExpTorques_StepWidth2';
+S.ResultsFolder     = 'ExpTorques_StepWidth_lba001';
 
 % initial guess based on simulations without exoskeletons
 S.IGsel         = 2;        % initial guess identifier (1: quasi random, 2: data-based)
 S.IGmodeID      = 4;        % initial guess mode identifier (1 walk, 2 run, 3prev.solution, 4 solution from /IG/Data folder)
 S.savename_ig   = 'NoExo';
+
+% lower bound muscle activity
+S.Bounds.ActLower = 0.01;
 
 % select the CasadiFolder
 S.CasadiFunc_Folders = 'Casadi_s1Pog_mtp';
@@ -37,7 +40,7 @@ SWadd = 0.13;
 S.Constr.calcn = 0.09 + SWadd;
 S.Constr.toes = 0.1 + SWadd;
 S.Constr.tibia = 0.11 + SWadd;
-f_PredSim_PoggenSee2020(S);
+f_PredSim_Gait92(S);
 
 % passive simulation
 S.DataSet       = 'PoggenSee2020_ExpPass';
@@ -50,7 +53,7 @@ SWadd = 0.15;
 S.Constr.calcn = 0.09 + SWadd;
 S.Constr.toes = 0.1 + SWadd;
 S.Constr.tibia = 0.11 + SWadd;
-f_PredSim_PoggenSee2020(S);
+f_PredSim_Gait92(S);
 
 % active simulation
 S.DataSet       = 'PoggenSee2020_Exp';
@@ -63,4 +66,4 @@ SWadd = 0.15;
 S.Constr.calcn = 0.09 + SWadd;
 S.Constr.toes = 0.1 + SWadd;
 S.Constr.tibia = 0.11 + SWadd;
-f_PredSim_PoggenSee2020(S);
+f_PredSim_Gait92(S);

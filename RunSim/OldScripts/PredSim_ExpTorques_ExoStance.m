@@ -17,7 +17,7 @@ S.IG_PelvisY = 0.896;   % subject 1 poggensee
 S.subject            = 's1_Poggensee';
 
 % output folder
-S.ResultsFolder     = 'ExpTorques_Lowerb005';
+S.ResultsFolder     = 'ExpTorques_Lower_lba001';
 
 % initial guess based on simulations without exoskeletons
 S.IGsel         = 2;        % initial guess identifier (1: quasi random, 2: data-based)
@@ -33,7 +33,7 @@ S.PercStance.xStanceOr = 0.61;
 S.PercStance.xStanceNew = 0.58;
 
 % lower bound muscle activity
-S.Bounds.ActLower = 0.05;
+S.Bounds.ActLower = 0.01;
 
 % normal walking simulation
 S.ExternalFunc  = 'PredSim_3D_Pog_s1_mtp.dll';        % this one is with the pinjoint mtp
@@ -42,7 +42,7 @@ S.ExoBool       = 0;
 S.ExoScale      = 0;
 S.savename      = 'NoExo';
 SWadd = 0.13;
-f_PredSim_PoggenSee2020(S);
+f_PredSim_Gait92(S);
 
 % passive simulation
 S.DataSet       = 'PoggenSee2020_ExpPass';
@@ -51,7 +51,7 @@ S.ExternalFunc2 = 'SimExo_3D_ExportAll.dll';        % external function for post
 S.ExoBool       = 1;    
 S.ExoScale      = 1;
 S.savename      = 'Passive';
-f_PredSim_PoggenSee2020(S);
+f_PredSim_Gait92(S);
 
 % active simulation
 S.DataSet       = 'PoggenSee2020_Exp';
@@ -60,4 +60,4 @@ S.ExternalFunc2 = 'SimExo_3D_ExportAll.dll';        % external function for post
 S.ExoBool       = 1;    
 S.ExoScale      = 1;
 S.savename      = 'Active';
-f_PredSim_PoggenSee2020(S);
+f_PredSim_Gait92(S);

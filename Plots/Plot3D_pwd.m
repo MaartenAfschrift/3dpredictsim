@@ -26,6 +26,15 @@ disp('Plotting: ');
 DispHeader(Names);
 disp('....');
 CsV = hsv(ct);
+
+C_NoExo     = [66 143 155]./255;
+C_Passive   = [0.4167    0.2604    0.1658];
+C_Active    = [0.6944    0.4340    0.2764];
+
+CsV(2,:) = C_NoExo;
+CsV(3,:) = C_Passive;
+CsV(1,:) = C_Active;
+
 h = figure();
 set(h,'Position',[82         151        1497         827]);
 for i = 1:ct-1

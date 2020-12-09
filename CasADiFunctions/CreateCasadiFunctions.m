@@ -82,8 +82,8 @@ end
 %% User input settings
 stiffnessArm    = 0;
 dampingArm      = 0.1;
-stiffnessMtp    = 1.5/(pi/180)/5;
-dampingMtp      = 0.5;
+stiffnessMtp    = Settings.kMTP;
+dampingMtp      = Settings.dMTP;
 % define general settings for default objective functions
 % By default, the tendon stiffness is 35 and the shift is 0.
 aTendon = 35*ones(NMuscle,1);
@@ -668,6 +668,7 @@ save(fullfile(OutPath,'MassM.mat'),'MassM');
 %% save the muscle-tendon parameters
 save(fullfile(OutPath,'MTparameters.mat'),'MTparameters');
 
-
+save('muscleNamesNew.mat','muscleNames');
+save('MTparamNew.mat','MTparameters_m');
 end
 

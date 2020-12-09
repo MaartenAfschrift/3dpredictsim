@@ -17,7 +17,7 @@ S.IG_PelvisY = 0.896;   % subject 1 poggensee
 S.subject            = 's1_Poggensee';
 
 % output folder
-S.ResultsFolder     = 'ExpTorques_Freq';
+S.ResultsFolder     = 'ExpTorques_Freq_lba001';
 
 % initial guess based on simulations without exoskeletons
 S.IGsel         = 2;        % initial guess identifier (1: quasi random, 2: data-based)
@@ -26,6 +26,9 @@ S.savename_ig   = 'NoExo';
 
 % select the CasadiFolder
 S.CasadiFunc_Folders = 'Casadi_s1Pog_mtp';
+
+% lower bound muscle activity
+S.Bounds.ActLower = 0.01;
 
 % stride frequency between 0.99 and 1.01
 S.Bounds.tf = [0.495 0.505];
@@ -36,7 +39,7 @@ S.ExternalFunc2 = 'PredSim_3D_Pog_s1_mtp_pp.dll';     % external function for po
 S.ExoBool       = 0;    
 S.ExoScale      = 0;
 S.savename      = 'NoExo';
-f_PredSim_PoggenSee2020(S);
+f_PredSim_Gait92(S);
 
 % passive simulation
 S.DataSet       = 'PoggenSee2020_ExpPass';
@@ -45,7 +48,7 @@ S.ExternalFunc2 = 'SimExo_3D_ExportAll.dll';        % external function for post
 S.ExoBool       = 1;    
 S.ExoScale      = 1;
 S.savename      = 'Passive';
-f_PredSim_PoggenSee2020(S);
+f_PredSim_Gait92(S);
 
 % active simulation
 S.DataSet       = 'PoggenSee2020_Exp';
@@ -54,4 +57,4 @@ S.ExternalFunc2 = 'SimExo_3D_ExportAll.dll';        % external function for post
 S.ExoBool       = 1;    
 S.ExoScale      = 1;
 S.savename      = 'Active';
-f_PredSim_PoggenSee2020(S);
+f_PredSim_Gait92(S);
